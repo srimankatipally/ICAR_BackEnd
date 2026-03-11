@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICAR Vision — Test Console</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e0e0e0; min-height: 100vh; }
+  header { background: #161b22; border-bottom: 1px solid #30363d; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 16px; font-weight: 600; color: #f0f0f0; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #f85149; transition: background .3s; }
+  .status-dot.connected { background: #3fb950; }
+  .container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 24px; max-width: 1200px; margin: 0 auto; }
+  .panel { background: #161b22; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+  .panel-header { padding: 10px 14px; border-bottom: 1px solid #30363d; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: #8b949e; display: flex; align-items: center; justify-content: space-between; }
+  .camera-panel { position: relative; }
+  .camera-panel video { width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #000; display: block; }
+  .camera-panel canvas { display: none; }
+  .camera-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #484f58; font-size: 14px; pointer-events: none; }
+  .transcript { padding: 12px; min-height: 200px; max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .msg { padding: 8px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; max-width: 90%; word-wrap: break-word; }
+  .msg.user { background: #1f3a5f; align-self: flex-end; border-bottom-right-radius: 2px; }
+  .msg.ai { background: #1c2d1c; align-self: flex-start; border-bottom-left-radius: 2px; }
+  .msg .label { font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; color: #8b949e; }
+  .controls { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .btn { padding: 10px 20px; border: 1px solid #30363d; border-radius: 8px; background: #21262d; color: #e0e0e0; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background .15s, border-color .15s; }
+  .btn:hover { background: #30363d; border-color: #484f58; }
+  .btn.active { background: #1f6feb; border-color: #388bfd; color: #fff; }
+  .btn.active:hover { background: #1a5fc9; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .text-form { flex: 1; display: flex; gap: 8px; min-width: 250px; }
+  .text-form input { flex: 1; padding: 10px 14px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; color: #e0e0e0; font-size: 13px; outline: none; }
+  .text-form input:focus { border-color: #388bfd; }
+  .text-form button { padding: 10px 18px; }
+  .event-log { grid-column: 1 / -1; }
+  .log-entries { padding: 8px; max-height: 250px; overflow-y: auto; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; line-height: 1.6; }
+  .log-entry { padding: 3px 6px; border-radius: 4px; white-space: pre-wrap; word-break: break-all; }
+  .log-entry:hover { background: #1c2028; }
+  .log-entry .ts { color: #484f58; margin-right: 6px; }
+  .log-entry .dir { margin-right: 4px; }
+  .log-entry .dir.up { color: #d29922; }
+  .log-entry .dir.down { color: #3fb950; }
+  .log-entry .dir.sys { color: #8b949e; }
+  .turn-marker { text-align: center; font-size: 11px; color: #484f58; padding: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ICAR Vision — Test Console</h1>
+  <div class="status">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">Disconnected</span>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Camera -->
+  <div class="panel camera-panel">
+    <div class="panel-header">Camera <span id="cameraFps"></span></div>
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <canvas id="cameraCanvas"></canvas>
+    <div class="camera-overlay" id="cameraOverlay">Camera off</div>
+  </div>
+
+  <!-- Transcript -->
+  <div class="panel">
+    <div class="panel-header">Conversation</div>
+    <div class="transcript" id="transcript"></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn" id="micBtn" disabled>Mic Off</button>
+    <button class="btn" id="camBtn" disabled>Camera Off</button>
+    <form class="text-form" id="textForm">
+      <input type="text" id="textInput" placeholder="Type a message..." disabled />
+      <button class="btn" type="submit" id="sendBtn" disabled>Send</button>
+    </form>
+  </div>
+
+  <!-- Event Log -->
+  <div class="panel event-log">
+    <div class="panel-header">Event Log <button class="btn" style="padding:4px 10px;font-size:11px" id="clearLog">Clear</button></div>
+    <div class="log-entries" id="logEntries"></div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────
+const userId = 'test-user';
+const sessionId = 'test-' + Math.random().toString(36).slice(2, 8);
+let ws = null;
+let micStream = null;
+let micContext = null;
+let micProcessor = null;
+let camStream = null;
+let camInterval = null;
+let playbackCtx = null;
+let audioQueue = [];
+let isPlaying = false;
+
+const $ = id => document.getElementById(id);
+const statusDot   = $('statusDot');
+const statusText  = $('statusText');
+const micBtn      = $('micBtn');
+const camBtn      = $('camBtn');
+const textInput   = $('textInput');
+const sendBtn     = $('sendBtn');
+const textForm    = $('textForm');
+const transcript  = $('transcript');
+const logEntries  = $('logEntries');
+const cameraVideo = $('cameraVideo');
+const cameraCanvas= $('cameraCanvas');
+const cameraOverlay=$('cameraOverlay');
+
+// ─── WebSocket ───────────────────────────────────────
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${proto}//${location.host}/ws/${userId}/${sessionId}`;
+  logEvent('sys', `Connecting to ${url}`);
+
+  ws = new WebSocket(url);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => {
+    setStatus(true);
+    micBtn.disabled = false;
+    camBtn.disabled = false;
+    textInput.disabled = false;
+    sendBtn.disabled = false;
+    logEvent('sys', 'Connected');
+  };
+
+  ws.onmessage = (evt) => {
+    // Binary frame = raw PCM audio from server
+    if (evt.data instanceof ArrayBuffer) {
+      playAudioBuffer(evt.data);
+      logEvent('down', `[audio-bin] ${evt.data.byteLength} bytes`);
+      return;
+    }
+    const event = JSON.parse(evt.data);
+    handleEvent(event);
+  };
+
+  ws.onclose = () => {
+    setStatus(false);
+    micBtn.disabled = true;
+    camBtn.disabled = true;
+    textInput.disabled = true;
+    sendBtn.disabled = true;
+    logEvent('sys', 'Disconnected — reconnecting in 3s');
+    setTimeout(connect, 3000);
+  };
+
+  ws.onerror = (err) => {
+    logEvent('sys', 'WebSocket error');
+    console.error(err);
+  };
+}
+
+function setStatus(connected) {
+  statusDot.classList.toggle('connected', connected);
+  statusText.textContent = connected ? 'Connected' : 'Disconnected';
+}
+
+// ─── Incoming Event Handler ──────────────────────────
+let currentAiMsgEl = null;
+let currentUserMsgEl = null;
+
+function findAudioData(obj, depth) {
+  if (!obj || depth > 5) return null;
+  if (typeof obj === 'string' && obj.length > 500) return null;
+  if (obj.inlineData && obj.inlineData.data) return obj.inlineData.data;
+  if (obj.inline_data && obj.inline_data.data) return obj.inline_data.data;
+  if (Array.isArray(obj)) {
+    for (const item of obj) { const r = findAudioData(item, depth + 1); if (r) return r; }
+  }
+  if (typeof obj === 'object') {
+    for (const key of Object.keys(obj)) {
+      if (key === 'data' || key === 'text') continue;
+      const r = findAudioData(obj[key], depth + 1);
+      if (r) return r;
+    }
+  }
+  return null;
+}
+
+function handleEvent(event) {
+  const keys = Object.keys(event).join(',');
+
+  // Always check for audio first (content.parts with inlineData)
+  let audioHandled = false;
+  if (event.content && event.content.parts) {
+    for (const part of event.content.parts) {
+      const audioB64 = (part.inlineData && part.inlineData.data)
+                     || (part.inline_data && part.inline_data.data);
+      if (audioB64 && typeof audioB64 === 'string' && audioB64.length > 100) {
+        enqueueAudio(audioB64);
+        logEvent('down', `[audio] ${audioB64.length} chars base64`);
+        audioHandled = true;
+      }
+      if (part.text) {
+        if (!currentAiMsgEl) {
+          currentAiMsgEl = addTranscriptMsg('ai', part.text);
+        } else {
+          updateTranscriptMsg(currentAiMsgEl, currentAiMsgEl._fullText + part.text);
+        }
+        logEvent('down', `[text] ${part.text.slice(0,100)}`);
+      }
+    }
+  }
+
+  // Fallback: recursively search for audio data if we haven't found it yet
+  if (!audioHandled && !event.inputTranscription && !event.outputTranscription
+      && !event.turnComplete && !event.interrupted && !event.usageMetadata) {
+    const foundAudio = findAudioData(event, 0);
+    if (foundAudio && typeof foundAudio === 'string' && foundAudio.length > 100) {
+      enqueueAudio(foundAudio);
+      logEvent('down', `[audio-fallback] ${foundAudio.length} chars base64`);
+      audioHandled = true;
+    }
+  }
+
+  // Input transcription (what the user said)
+  if (event.inputTranscription) {
+    const text = event.inputTranscription.text || event.inputTranscription;
+    if (text) {
+      if (!currentUserMsgEl || event.partial === false) {
+        currentUserMsgEl = addTranscriptMsg('user', text);
+      } else {
+        updateTranscriptMsg(currentUserMsgEl, text);
+      }
+      if (!event.partial) currentUserMsgEl = null;
+    }
+    logEvent('down', `[user transcript] ${typeof text === 'string' ? text.slice(0,80) : JSON.stringify(text).slice(0,80)}`);
+    return;
+  }
+
+  // Output transcription (what the AI said)
+  if (event.outputTranscription) {
+    const text = event.outputTranscription.text || event.outputTranscription;
+    if (text) {
+      if (!currentAiMsgEl) {
+        currentAiMsgEl = addTranscriptMsg('ai', text);
+      } else {
+        updateTranscriptMsg(currentAiMsgEl, text);
+      }
+      if (!event.partial) currentAiMsgEl = null;
+    }
+    logEvent('down', `[ai transcript] ${typeof text === 'string' ? text.slice(0,80) : JSON.stringify(text).slice(0,80)}`);
+    return;
+  }
+
+  // Turn complete
+  if (event.turnComplete) {
+    currentAiMsgEl = null;
+    currentUserMsgEl = null;
+    logEvent('down', '[turn complete]');
+    return;
+  }
+
+  // Interrupted
+  if (event.interrupted) {
+    clearAudioQueue();
+    currentAiMsgEl = null;
+    logEvent('down', '[interrupted]');
+    return;
+  }
+
+  // Other events — log with keys for debugging
+  if (!audioHandled) {
+    const summary = JSON.stringify(event).slice(0, 200);
+    logEvent('down', `[keys:${keys}] ${summary}`);
+  }
+}
+
+// ─── Transcript Panel ────────────────────────────────
+function addTranscriptMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = role === 'user' ? 'You' : 'AI';
+  const body = document.createElement('div');
+  body.textContent = text;
+  div.appendChild(label);
+  div.appendChild(body);
+  div._bodyEl = body;
+  div._fullText = text;
+  transcript.appendChild(div);
+  transcript.scrollTop = transcript.scrollHeight;
+  return div;
+}
+
+function updateTranscriptMsg(el, text) {
+  if (!el || !el._bodyEl) return;
+  el._fullText = text;
+  el._bodyEl.textContent = text;
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+// ─── Audio Capture (Mic) ─────────────────────────────
+const TARGET_SAMPLE_RATE = 16000;
+
+async function startMic() {
+  micStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: { ideal: TARGET_SAMPLE_RATE }, channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  micContext = new AudioContext({ sampleRate: micStream.getAudioTracks()[0].getSettings().sampleRate || 48000 });
+  const source = micContext.createMediaStreamSource(micStream);
+  const nativeSR = micContext.sampleRate;
+
+  // ScriptProcessor for broad browser support (AudioWorklet is better but needs a separate file)
+  const bufferSize = 4096;
+  micProcessor = micContext.createScriptProcessor(bufferSize, 1, 1);
+
+  micProcessor.onaudioprocess = (e) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const input = e.inputBuffer.getChannelData(0);
+    const pcm16 = downsampleAndConvert(input, nativeSR, TARGET_SAMPLE_RATE);
+    ws.send(pcm16.buffer);
+  };
+
+  source.connect(micProcessor);
+  micProcessor.connect(micContext.destination);
+  logEvent('sys', `Mic started (native ${nativeSR}Hz → ${TARGET_SAMPLE_RATE}Hz)`);
+}
+
+function downsampleAndConvert(float32, fromRate, toRate) {
+  const ratio = fromRate / toRate;
+  const newLength = Math.floor(float32.length / ratio);
+  const int16 = new Int16Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    const srcIndex = i * ratio;
+    const low = Math.floor(srcIndex);
+    const high = Math.min(low + 1, float32.length - 1);
+    const frac = srcIndex - low;
+    const sample = float32[low] * (1 - frac) + float32[high] * frac;
+    int16[i] = Math.max(-32768, Math.min(32767, Math.round(sample * 32767)));
+  }
+  return int16;
+}
+
+function stopMic() {
+  if (micProcessor) { micProcessor.disconnect(); micProcessor = null; }
+  if (micContext) { micContext.close(); micContext = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  logEvent('sys', 'Mic stopped');
+}
+
+// ─── Camera Capture ──────────────────────────────────
+async function startCamera() {
+  camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 768 }, height: { ideal: 768 } } });
+  cameraVideo.srcObject = camStream;
+  cameraOverlay.style.display = 'none';
+
+  const track = camStream.getVideoTracks()[0];
+  const settings = track.getSettings();
+  cameraCanvas.width = settings.width || 640;
+  cameraCanvas.height = settings.height || 480;
+
+  camInterval = setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const ctx = cameraCanvas.getContext('2d');
+    ctx.drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
+    const dataUrl = cameraCanvas.toDataURL('image/jpeg', 0.7);
+    const base64 = dataUrl.split(',')[1];
+    const msg = JSON.stringify({ type: 'image', data: base64, mimeType: 'image/jpeg' });
+    ws.send(msg);
+    logEvent('up', `[image] ${(base64.length / 1024).toFixed(1)}KB`);
+  }, 1000);
+
+  logEvent('sys', `Camera started (${cameraCanvas.width}x${cameraCanvas.height}, 1 FPS)`);
+}
+
+function stopCamera() {
+  if (camInterval) { clearInterval(camInterval); camInterval = null; }
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  cameraVideo.srcObject = null;
+  cameraOverlay.style.display = 'block';
+  logEvent('sys', 'Camera stopped');
+}
+
+// ─── Audio Playback (24kHz PCM from Gemini) ──────────
+const PLAYBACK_SAMPLE_RATE = 24000;
+let nextPlayTime = 0;
+
+function initPlaybackCtx() {
+  if (!playbackCtx) {
+    playbackCtx = new AudioContext({ sampleRate: PLAYBACK_SAMPLE_RATE });
+    nextPlayTime = 0;
+  }
+  if (playbackCtx.state === 'suspended') {
+    playbackCtx.resume();
+  }
+}
+
+function playAudioBuffer(arrayBuf) {
+  initPlaybackCtx();
+  const evenLen = arrayBuf.byteLength - (arrayBuf.byteLength % 2);
+  if (evenLen < 2) return;
+  const view = new DataView(arrayBuf);
+  const sampleCount = evenLen / 2;
+  const float32 = new Float32Array(sampleCount);
+  for (let i = 0; i < sampleCount; i++) {
+    float32[i] = view.getInt16(i * 2, true) / 32768;
+  }
+  const buffer = playbackCtx.createBuffer(1, sampleCount, PLAYBACK_SAMPLE_RATE);
+  buffer.getChannelData(0).set(float32);
+  const src = playbackCtx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(playbackCtx.destination);
+  const now = playbackCtx.currentTime;
+  const startAt = Math.max(now, nextPlayTime);
+  src.start(startAt);
+  nextPlayTime = startAt + buffer.duration;
+}
+
+function enqueueAudio(base64) {
+  initPlaybackCtx();
+  const binary = atob(base64);
+  const len = binary.length;
+  const evenLen = len - (len % 2);
+  const buf = new ArrayBuffer(evenLen);
+  const u8 = new Uint8Array(buf);
+  for (let i = 0; i < evenLen; i++) u8[i] = binary.charCodeAt(i);
+  playAudioBuffer(buf);
+}
+
+function clearAudioQueue() {
+  audioQueue = [];
+  nextPlayTime = playbackCtx ? playbackCtx.currentTime : 0;
+  isPlaying = false;
+}
+
+// ─── Event Log ───────────────────────────────────────
+function logEvent(dir, text) {
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+  const arrow = dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'sys';
+  const symbol = dir === 'up' ? '\u2191' : dir === 'down' ? '\u2193' : '\u2022';
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="ts">${ts}</span><span class="dir ${arrow}">${symbol}</span>${escapeHtml(text)}`;
+  logEntries.appendChild(entry);
+  logEntries.scrollTop = logEntries.scrollHeight;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ─── Button Handlers ─────────────────────────────────
+let micActive = false;
+let camActive = false;
+
+micBtn.addEventListener('click', async () => {
+  if (!micActive) {
+    try { await startMic(); micActive = true; micBtn.textContent = 'Mic On'; micBtn.classList.add('active'); } catch (e) { logEvent('sys', 'Mic error: ' + e.message); }
+  } else {
+    stopMic(); micActive = false; micBtn.textContent = 'Mic Off'; micBtn.classList.remove('active');
+  }
+});
+
+camBtn.addEventListener('click', async () => {
+  if (!camActive) {
+    try { await startCamera(); camActive = true; camBtn.textContent = 'Camera On'; camBtn.classList.add('active'); } catch (e) { logEvent('sys', 'Camera error: ' + e.message); }
+  } else {
+    stopCamera(); camActive = false; camBtn.textContent = 'Camera Off'; camBtn.classList.remove('active');
+  }
+});
+
+textForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = textInput.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const msg = JSON.stringify({ type: 'text', text });
+  ws.send(msg);
+  addTranscriptMsg('user', text);
+  logEvent('up', `[text] ${text}`);
+  textInput.value = '';
+});
+
+$('clearLog').addEventListener('click', () => { logEntries.innerHTML = ''; });
+
+// ─── Init ────────────────────────────────────────────
+// Browsers require a user gesture to start AudioContext.
+// Pre-init on the first click/tap anywhere on the page.
+document.addEventListener('click', function initAudioOnGesture() {
+  initPlaybackCtx();
+  document.removeEventListener('click', initAudioOnGesture);
+  logEvent('sys', 'Audio playback unlocked');
+}, { once: true });
+
+connect();
+</script>
+</body>
+</html>
