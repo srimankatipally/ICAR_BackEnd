@@ -8,8 +8,6 @@ A real-time, multimodal AI assistant for Indian oilseed farmers, powered by Goog
 
 **Live Application:** https://icar-vision-backend-ykitwyw32a-uc.a.run.app/
 
-**Video Demo:** [Link to demo video]
-
 ## Problem Statement
 
 Indian oilseed farmers face challenges accessing timely agricultural advice:
