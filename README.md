@@ -288,11 +288,7 @@ This project qualifies for the **Live Agents** category because:
 | Google GenAI SDK or ADK | ADK (Agent Development Kit) |
 | Google Cloud Service | Cloud Run, Vertex AI |
 
-### Bonus Points
 
-- [x] Automated Cloud Deployment (`deploy.sh`)
-- [ ] Content piece (blog/video)
-- [ ] GDG membership
 
 ## Team
 
