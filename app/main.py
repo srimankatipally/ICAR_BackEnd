@@ -23,7 +23,7 @@ from google.adk.sessions import InMemorySessionService  # noqa: E402
 from google.genai import types  # noqa: E402
 
 from app.config import settings  # noqa: E402
-from app.vision_assistant import agent  # noqa: E402
+from app.agents.root_agent import root_agent  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,7 +50,7 @@ static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 session_service = InMemorySessionService()
-runner = Runner(app_name=APP_NAME, agent=agent, session_service=session_service)
+runner = Runner(app_name=APP_NAME, agent=root_agent, session_service=session_service)
 
 
 # --- REST Endpoints ---
@@ -58,7 +58,14 @@ runner = Runner(app_name=APP_NAME, agent=agent, session_service=session_service)
 
 @app.get("/")
 async def root():
+    """Main UI - placeholder for new UI."""
     return FileResponse(static_dir / "index.html")
+
+
+@app.get("/test")
+async def test_console():
+    """Test console UI for debugging."""
+    return FileResponse(static_dir / "test.html")
 
 
 @app.get("/health")
@@ -84,24 +91,43 @@ async def websocket_endpoint(
     user_id: str,
     session_id: str,
 ) -> None:
+    """Audio-enabled bidirectional streaming endpoint (for voice/video modes)."""
+    await _handle_websocket(websocket, user_id, session_id, use_audio=True)
+
+
+@app.websocket("/ws/text/{user_id}/{session_id}")
+async def websocket_text_endpoint(
+    websocket: WebSocket,
+    user_id: str,
+    session_id: str,
+) -> None:
+    """Text-only bidirectional streaming endpoint (for chat mode)."""
+    await _handle_websocket(websocket, user_id, session_id, use_audio=False)
+
+
+async def _handle_websocket(
+    websocket: WebSocket,
+    user_id: str,
+    session_id: str,
+    use_audio: bool = True,
+) -> None:
     """Bidirectional streaming endpoint.
 
     Audio is sent as binary WebSocket frames (raw PCM 16kHz 16-bit mono).
     Text and images are sent as JSON text frames.
     """
     logger.info(
-        "WebSocket connection request: user_id=%s, session_id=%s",
+        "WebSocket connection request: user_id=%s, session_id=%s, use_audio=%s",
         user_id,
         session_id,
+        use_audio,
     )
     await websocket.accept()
     logger.info("WebSocket connection accepted")
 
     # --- Phase 2: Session Initialization ---
 
-    is_native_audio = "native-audio" in settings.GEMINI_MODEL.lower()
-
-    if is_native_audio:
+    if use_audio and "native-audio" in settings.GEMINI_MODEL.lower():
         run_config = RunConfig(
             streaming_mode=StreamingMode.BIDI,
             response_modalities=["AUDIO"],

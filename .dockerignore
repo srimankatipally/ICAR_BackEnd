@@ -15,5 +15,11 @@ venv
 dist
 build
 *.md
+crop/**/*.docx
+crop/**/*.pdf
+crop/**/*.doc
+diseases/**/*.docx
+diseases/**/*.pdf
+diseases/**/*.doc
 test_ws.py
 deploy.sh

@@ -2,340 +2,778 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ICAR Vision — Test Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a5f2a">
+<title>Kisan Mitra - ICAR</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e0e0e0; min-height: 100vh; }
-  header { background: #161b22; border-bottom: 1px solid #30363d; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
-  header h1 { font-size: 16px; font-weight: 600; color: #f0f0f0; }
-  .status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #f85149; transition: background .3s; }
-  .status-dot.connected { background: #3fb950; }
-  .container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 24px; max-width: 1200px; margin: 0 auto; }
-  .panel { background: #161b22; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
-  .panel-header { padding: 10px 14px; border-bottom: 1px solid #30363d; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: #8b949e; display: flex; align-items: center; justify-content: space-between; }
-  .camera-panel { position: relative; }
-  .camera-panel video { width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #000; display: block; }
-  .camera-panel canvas { display: none; }
-  .camera-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #484f58; font-size: 14px; pointer-events: none; }
-  .transcript { padding: 12px; min-height: 200px; max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-  .msg { padding: 8px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; max-width: 90%; word-wrap: break-word; }
-  .msg.user { background: #1f3a5f; align-self: flex-end; border-bottom-right-radius: 2px; }
-  .msg.ai { background: #1c2d1c; align-self: flex-start; border-bottom-left-radius: 2px; }
-  .msg .label { font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; color: #8b949e; }
-  .controls { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .btn { padding: 10px 20px; border: 1px solid #30363d; border-radius: 8px; background: #21262d; color: #e0e0e0; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background .15s, border-color .15s; }
-  .btn:hover { background: #30363d; border-color: #484f58; }
-  .btn.active { background: #1f6feb; border-color: #388bfd; color: #fff; }
-  .btn.active:hover { background: #1a5fc9; }
-  .btn:disabled { opacity: .4; cursor: not-allowed; }
-  .text-form { flex: 1; display: flex; gap: 8px; min-width: 250px; }
-  .text-form input { flex: 1; padding: 10px 14px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; color: #e0e0e0; font-size: 13px; outline: none; }
-  .text-form input:focus { border-color: #388bfd; }
-  .text-form button { padding: 10px 18px; }
-  .event-log { grid-column: 1 / -1; }
-  .log-entries { padding: 8px; max-height: 250px; overflow-y: auto; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; line-height: 1.6; }
-  .log-entry { padding: 3px 6px; border-radius: 4px; white-space: pre-wrap; word-break: break-all; }
-  .log-entry:hover { background: #1c2028; }
-  .log-entry .ts { color: #484f58; margin-right: 6px; }
-  .log-entry .dir { margin-right: 4px; }
-  .log-entry .dir.up { color: #d29922; }
-  .log-entry .dir.down { color: #3fb950; }
-  .log-entry .dir.sys { color: #8b949e; }
-  .turn-marker { text-align: center; font-size: 11px; color: #484f58; padding: 4px; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #1a5f2a;
+  --primary-light: #2d8a3e;
+  --whatsapp: #25D366;
+  --bg: #f5f7f5;
+  --white: #ffffff;
+  --text: #1a1a1a;
+  --text-secondary: #666;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%;
+  height: -webkit-fill-available;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.screen {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.screen.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Landing Screen */
+#landing {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  justify-content: center;
+  align-items: center;
+  color: white;
+}
+
+.greeting {
+  text-align: center;
+}
+
+.namaste {
+  font-size: 64px;
+  animation: pulse 1s ease-in-out;
+}
+
+.greeting h1 {
+  font-size: 28px;
+  margin-top: 16px;
+  opacity: 0;
+  animation: fadeSlideUp 0.6s ease forwards 0.3s;
+}
+
+.greeting p {
+  font-size: 16px;
+  opacity: 0;
+  animation: fadeSlideUp 0.6s ease forwards 0.5s;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Action Screen */
+#action {
+  background: var(--bg);
+  padding: 24px;
+  justify-content: center;
+  align-items: center;
+}
+
+.action-card {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 32px 24px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+.action-card h2 {
+  font-size: 22px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.action-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 18px 24px;
+  border: none;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  text-decoration: none;
+  margin-bottom: 14px;
+}
+
+.btn:active { transform: scale(0.98); }
+
+.btn-whatsapp {
+  background: var(--whatsapp);
+  color: white;
+}
+
+.btn-ai {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-back {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 12px;
+  font-size: 15px;
+}
+
+/* AI Options Screen */
+#ai-options {
+  background: var(--bg);
+  padding: 24px;
+}
+
+.options-header {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.options-header h2 {
+  font-size: 22px;
+  color: var(--text);
+}
+
+.options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 400px;
+  margin: 0 auto;
+  flex: 1;
+  justify-content: center;
+}
+
+.option-card {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.option-card:active { transform: scale(0.98); }
+
+.option-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.option-icon.text { background: #e3f2fd; }
+.option-icon.voice { background: #fce4ec; }
+.option-icon.video { background: #e8f5e9; }
+
+.option-info h3 {
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+
+.option-info p {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Chat Screen */
+#chat, #voice, #video {
+  background: var(--white);
+}
+
+.chat-header {
+  background: var(--primary);
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-header .back-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.chat-header h3 {
+  font-size: 18px;
+  flex: 1;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f85149;
+}
+
+.status-dot.connected { background: #3fb950; }
+
+.audio-indicator {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: white;
+  background: rgba(255,255,255,0.2);
+  padding: 4px 8px;
+  border-radius: 12px;
+  animation: audioPulse 0.5s ease-in-out infinite;
+}
+
+.audio-indicator.playing { display: flex; }
+
+@keyframes audioPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.msg {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.msg.user {
+  background: var(--primary);
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.msg.ai {
+  background: #f0f0f0;
+  color: var(--text);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-input {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid #e0e0e0;
+  padding-bottom: calc(12px + var(--safe-bottom));
+  background: var(--white);
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 14px 18px;
+  border: 1px solid #ddd;
+  border-radius: 24px;
+  font-size: 16px;
+  outline: none;
+}
+
+.chat-input input:focus { border-color: var(--primary); }
+
+.chat-input button {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* Voice Screen */
+.voice-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  gap: 24px;
+}
+
+.voice-visual {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  transition: transform 0.3s;
+}
+
+.voice-visual.active {
+  animation: voicePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes voicePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(26,95,42,0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(26,95,42,0); }
+}
+
+.voice-status {
+  font-size: 18px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.voice-transcript {
+  background: #f5f5f5;
+  border-radius: 16px;
+  padding: 16px;
+  width: 100%;
+  max-width: 360px;
+  min-height: 80px;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.mic-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 32px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mic-btn.active { background: #dc3545; }
+
+/* Video Screen */
+.video-container {
+  flex: 1;
+  position: relative;
+  background: #000;
+}
+
+.video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #666;
+  font-size: 16px;
+}
+
+.video-controls {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  justify-content: center;
+  background: var(--white);
+  padding-bottom: calc(20px + var(--safe-bottom));
+}
+
+.video-controls button {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.cam-btn { background: var(--primary); color: white; }
+.cam-btn.active { background: #dc3545; }
+
+.video-transcript {
+  position: absolute;
+  bottom: 100px;
+  left: 16px;
+  right: 16px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  max-height: 120px;
+  overflow-y: auto;
+}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>ICAR Vision — Test Console</h1>
-  <div class="status">
-    <span class="status-dot" id="statusDot"></span>
-    <span id="statusText">Disconnected</span>
+<!-- Screen 1: Landing -->
+<div id="landing" class="screen active">
+  <div class="greeting">
+    <div class="namaste">🙏</div>
+    <h1>Namaste!</h1>
+    <p>Welcome to Kisan Mitra</p>
   </div>
-</header>
+</div>
 
-<div class="container">
-  <!-- Camera -->
-  <div class="panel camera-panel">
-    <div class="panel-header">Camera <span id="cameraFps"></span></div>
+<!-- Screen 2: Action -->
+<div id="action" class="screen">
+  <div class="action-card">
+    <h2>How would you like to continue?</h2>
+    <p>Choose your preferred way to get help with oilseed crops</p>
+    <a href="https://wa.me/914024598180" class="btn btn-whatsapp" target="_blank">
+      <span>📱</span> Continue on WhatsApp
+    </a>
+    <button class="btn btn-ai" onclick="showScreen('ai-options')">
+      <span>🤖</span> Speak with AI
+    </button>
+  </div>
+</div>
+
+<!-- Screen 3: AI Options -->
+<div id="ai-options" class="screen">
+  <div class="options-header">
+    <h2>Choose Interaction Mode</h2>
+  </div>
+  <div class="options-grid">
+    <div class="option-card" onclick="showScreen('chat')">
+      <div class="option-icon text">⌨️</div>
+      <div class="option-info">
+        <h3>Text Chat</h3>
+        <p>Type your questions about crops</p>
+      </div>
+    </div>
+    <div class="option-card" onclick="showScreen('voice')">
+      <div class="option-icon voice">🎤</div>
+      <div class="option-info">
+        <h3>Voice Input</h3>
+        <p>Speak naturally in any language</p>
+      </div>
+    </div>
+    <div class="option-card" onclick="showScreen('video')">
+      <div class="option-icon video">📹</div>
+      <div class="option-info">
+        <h3>Video Query</h3>
+        <p>Show your crop for disease detection</p>
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-back" onclick="showScreen('action')">← Back</button>
+</div>
+
+<!-- Screen 4: Chat -->
+<div id="chat" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="goBackFromAI()">←</button>
+    <h3>Text Chat</h3>
+    <div class="status-dot" id="chatStatus"></div>
+  </div>
+  <div class="messages" id="chatMessages"></div>
+  <form class="chat-input" id="chatForm">
+    <input type="text" id="chatInput" placeholder="Type your message..." autocomplete="off">
+    <button type="submit">➤</button>
+  </form>
+</div>
+
+<!-- Screen 5: Voice -->
+<div id="voice" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="goBackFromAI()">←</button>
+    <h3>Voice Assistant</h3>
+    <div class="audio-indicator" id="voiceAudioIndicator">🔊 Speaking</div>
+    <div class="status-dot" id="voiceStatus"></div>
+  </div>
+  <div class="voice-content">
+    <div class="voice-visual" id="voiceVisual">🎙️</div>
+    <div class="voice-status" id="voiceStatusText">Tap to start speaking</div>
+    <div class="voice-transcript" id="voiceTranscript">Your conversation will appear here...</div>
+    <button class="mic-btn" id="micBtn">🎤</button>
+  </div>
+</div>
+
+<!-- Screen 6: Video -->
+<div id="video" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="goBackFromAI()">←</button>
+    <h3>Video Query</h3>
+    <div class="audio-indicator" id="videoAudioIndicator">🔊 Speaking</div>
+    <div class="status-dot" id="videoStatus"></div>
+  </div>
+  <div class="video-container">
     <video id="cameraVideo" autoplay playsinline muted></video>
-    <canvas id="cameraCanvas"></canvas>
-    <div class="camera-overlay" id="cameraOverlay">Camera off</div>
+    <canvas id="cameraCanvas" style="display:none"></canvas>
+    <div class="video-overlay" id="videoOverlay">Camera off - tap button to start</div>
+    <div class="video-transcript" id="videoTranscript" style="display:none"></div>
   </div>
-
-  <!-- Transcript -->
-  <div class="panel">
-    <div class="panel-header">Conversation</div>
-    <div class="transcript" id="transcript"></div>
-  </div>
-
-  <!-- Controls -->
-  <div class="controls">
-    <button class="btn" id="micBtn" disabled>Mic Off</button>
-    <button class="btn" id="camBtn" disabled>Camera Off</button>
-    <form class="text-form" id="textForm">
-      <input type="text" id="textInput" placeholder="Type a message..." disabled />
-      <button class="btn" type="submit" id="sendBtn" disabled>Send</button>
-    </form>
-  </div>
-
-  <!-- Event Log -->
-  <div class="panel event-log">
-    <div class="panel-header">Event Log <button class="btn" style="padding:4px 10px;font-size:11px" id="clearLog">Clear</button></div>
-    <div class="log-entries" id="logEntries"></div>
+  <div class="video-controls">
+    <button class="cam-btn" id="camBtn">📷</button>
+    <button class="mic-btn" id="videoMicBtn">🎤</button>
   </div>
 </div>
 
 <script>
-// ─── State ───────────────────────────────────────────
-const userId = 'test-user';
-const sessionId = 'test-' + Math.random().toString(36).slice(2, 8);
+// State
+const userId = 'user-' + Math.random().toString(36).slice(2, 8);
+const sessionId = 'session-' + Date.now();
 let ws = null;
-let micStream = null;
-let micContext = null;
-let micProcessor = null;
-let camStream = null;
-let camInterval = null;
-let playbackCtx = null;
-let audioQueue = [];
-let isPlaying = false;
+let currentScreen = 'landing';
+let micStream = null, micContext = null, micProcessor = null;
+let camStream = null, camInterval = null;
+let playbackCtx = null, nextPlayTime = 0;
 
-const $ = id => document.getElementById(id);
-const statusDot   = $('statusDot');
-const statusText  = $('statusText');
-const micBtn      = $('micBtn');
-const camBtn      = $('camBtn');
-const textInput   = $('textInput');
-const sendBtn     = $('sendBtn');
-const textForm    = $('textForm');
-const transcript  = $('transcript');
-const logEntries  = $('logEntries');
-const cameraVideo = $('cameraVideo');
-const cameraCanvas= $('cameraCanvas');
-const cameraOverlay=$('cameraOverlay');
+// Screen Navigation
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  
+  // Close existing connection when switching screens
+  if (ws && currentScreen !== id) {
+    ws.close();
+    ws = null;
+  }
+  
+  currentScreen = id;
+  
+  // Connect with appropriate mode
+  if (['chat', 'voice', 'video'].includes(id) && !ws) {
+    const useTextOnly = (id === 'chat');
+    connectWS(useTextOnly);
+  }
+}
 
-// ─── WebSocket ───────────────────────────────────────
-function connect() {
+function goBackFromAI() {
+  stopMic();
+  stopCamera();
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+  showScreen('ai-options');
+}
+
+// Auto-transition from landing
+setTimeout(() => showScreen('action'), 2000);
+
+// WebSocket
+function connectWS(textOnly = false) {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${proto}//${location.host}/ws/${userId}/${sessionId}`;
-  logEvent('sys', `Connecting to ${url}`);
-
+  // Use /ws/text/ for chat mode (text-only), /ws/ for voice/video (audio)
+  const path = textOnly ? `/ws/text/${userId}/${sessionId}` : `/ws/${userId}/${sessionId}`;
+  const url = `${proto}//${location.host}${path}`;
+  
+  console.log('Connecting to:', url, 'textOnly:', textOnly);
+  
   ws = new WebSocket(url);
   ws.binaryType = 'arraybuffer';
-
+  
   ws.onopen = () => {
-    setStatus(true);
-    micBtn.disabled = false;
-    camBtn.disabled = false;
-    textInput.disabled = false;
-    sendBtn.disabled = false;
-    logEvent('sys', 'Connected');
+    updateStatus(true);
   };
-
+  
   ws.onmessage = (evt) => {
-    // Binary frame = raw PCM audio from server
     if (evt.data instanceof ArrayBuffer) {
-      playAudioBuffer(evt.data);
-      logEvent('down', `[audio-bin] ${evt.data.byteLength} bytes`);
+      // Only play audio in voice/video modes
+      if (currentScreen !== 'chat') {
+        playAudio(evt.data);
+      }
       return;
     }
-    const event = JSON.parse(evt.data);
-    handleEvent(event);
+    handleEvent(JSON.parse(evt.data));
   };
-
+  
   ws.onclose = () => {
-    setStatus(false);
-    micBtn.disabled = true;
-    camBtn.disabled = true;
-    textInput.disabled = true;
-    sendBtn.disabled = true;
-    logEvent('sys', 'Disconnected — reconnecting in 3s');
-    setTimeout(connect, 3000);
-  };
-
-  ws.onerror = (err) => {
-    logEvent('sys', 'WebSocket error');
-    console.error(err);
-  };
-}
-
-function setStatus(connected) {
-  statusDot.classList.toggle('connected', connected);
-  statusText.textContent = connected ? 'Connected' : 'Disconnected';
-}
-
-// ─── Incoming Event Handler ──────────────────────────
-let currentAiMsgEl = null;
-let currentUserMsgEl = null;
-
-function findAudioData(obj, depth) {
-  if (!obj || depth > 5) return null;
-  if (typeof obj === 'string' && obj.length > 500) return null;
-  if (obj.inlineData && obj.inlineData.data) return obj.inlineData.data;
-  if (obj.inline_data && obj.inline_data.data) return obj.inline_data.data;
-  if (Array.isArray(obj)) {
-    for (const item of obj) { const r = findAudioData(item, depth + 1); if (r) return r; }
-  }
-  if (typeof obj === 'object') {
-    for (const key of Object.keys(obj)) {
-      if (key === 'data' || key === 'text') continue;
-      const r = findAudioData(obj[key], depth + 1);
-      if (r) return r;
+    updateStatus(false);
+    ws = null;
+    if (['chat', 'voice', 'video'].includes(currentScreen)) {
+      setTimeout(() => connectWS(currentScreen === 'chat'), 3000);
     }
-  }
-  return null;
+  };
 }
+
+function updateStatus(connected) {
+  ['chatStatus', 'voiceStatus', 'videoStatus'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('connected', connected);
+  });
+}
+
+// Event Handler
+let currentAiMsg = null;
 
 function handleEvent(event) {
-  const keys = Object.keys(event).join(',');
-
-  // Always check for audio first (content.parts with inlineData)
-  let audioHandled = false;
+  // Audio in content
   if (event.content && event.content.parts) {
     for (const part of event.content.parts) {
-      const audioB64 = (part.inlineData && part.inlineData.data)
-                     || (part.inline_data && part.inline_data.data);
-      if (audioB64 && typeof audioB64 === 'string' && audioB64.length > 100) {
-        enqueueAudio(audioB64);
-        logEvent('down', `[audio] ${audioB64.length} chars base64`);
-        audioHandled = true;
+      const audioB64 = part.inlineData?.data || part.inline_data?.data;
+      if (audioB64 && audioB64.length > 100) {
+        playAudioB64(audioB64);
       }
       if (part.text) {
-        if (!currentAiMsgEl) {
-          currentAiMsgEl = addTranscriptMsg('ai', part.text);
-        } else {
-          updateTranscriptMsg(currentAiMsgEl, currentAiMsgEl._fullText + part.text);
-        }
-        logEvent('down', `[text] ${part.text.slice(0,100)}`);
+        appendAiText(part.text);
       }
     }
   }
-
-  // Fallback: recursively search for audio data if we haven't found it yet
-  if (!audioHandled && !event.inputTranscription && !event.outputTranscription
-      && !event.turnComplete && !event.interrupted && !event.usageMetadata) {
-    const foundAudio = findAudioData(event, 0);
-    if (foundAudio && typeof foundAudio === 'string' && foundAudio.length > 100) {
-      enqueueAudio(foundAudio);
-      logEvent('down', `[audio-fallback] ${foundAudio.length} chars base64`);
-      audioHandled = true;
-    }
-  }
-
-  // Input transcription (what the user said)
+  
+  // Transcriptions
   if (event.inputTranscription) {
     const text = event.inputTranscription.text || event.inputTranscription;
-    if (text) {
-      if (!currentUserMsgEl || event.partial === false) {
-        currentUserMsgEl = addTranscriptMsg('user', text);
-      } else {
-        updateTranscriptMsg(currentUserMsgEl, text);
-      }
-      if (!event.partial) currentUserMsgEl = null;
-    }
-    logEvent('down', `[user transcript] ${typeof text === 'string' ? text.slice(0,80) : JSON.stringify(text).slice(0,80)}`);
-    return;
+    if (text) appendUserText(text);
   }
-
-  // Output transcription (what the AI said)
+  
   if (event.outputTranscription) {
     const text = event.outputTranscription.text || event.outputTranscription;
-    if (text) {
-      if (!currentAiMsgEl) {
-        currentAiMsgEl = addTranscriptMsg('ai', text);
-      } else {
-        updateTranscriptMsg(currentAiMsgEl, text);
-      }
-      if (!event.partial) currentAiMsgEl = null;
-    }
-    logEvent('down', `[ai transcript] ${typeof text === 'string' ? text.slice(0,80) : JSON.stringify(text).slice(0,80)}`);
-    return;
+    if (text) appendAiText(text);
   }
-
-  // Turn complete
+  
   if (event.turnComplete) {
-    currentAiMsgEl = null;
-    currentUserMsgEl = null;
-    logEvent('down', '[turn complete]');
-    return;
-  }
-
-  // Interrupted
-  if (event.interrupted) {
-    clearAudioQueue();
-    currentAiMsgEl = null;
-    logEvent('down', '[interrupted]');
-    return;
-  }
-
-  // Other events — log with keys for debugging
-  if (!audioHandled) {
-    const summary = JSON.stringify(event).slice(0, 200);
-    logEvent('down', `[keys:${keys}] ${summary}`);
+    currentAiMsg = null;
   }
 }
 
-// ─── Transcript Panel ────────────────────────────────
-function addTranscriptMsg(role, text) {
+function appendUserText(text) {
+  if (currentScreen === 'chat') {
+    addChatMsg('user', text);
+  } else {
+    updateTranscript('You: ' + text);
+  }
+}
+
+function appendAiText(text) {
+  if (currentScreen === 'chat') {
+    if (!currentAiMsg) {
+      currentAiMsg = addChatMsg('ai', text);
+    } else {
+      currentAiMsg.textContent += text;
+    }
+  } else {
+    updateTranscript('AI: ' + text);
+  }
+  scrollMessages();
+}
+
+function addChatMsg(role, text) {
   const div = document.createElement('div');
-  div.className = `msg ${role}`;
-  const label = document.createElement('div');
-  label.className = 'label';
-  label.textContent = role === 'user' ? 'You' : 'AI';
-  const body = document.createElement('div');
-  body.textContent = text;
-  div.appendChild(label);
-  div.appendChild(body);
-  div._bodyEl = body;
-  div._fullText = text;
-  transcript.appendChild(div);
-  transcript.scrollTop = transcript.scrollHeight;
+  div.className = 'msg ' + role;
+  div.textContent = text;
+  document.getElementById('chatMessages').appendChild(div);
+  scrollMessages();
   return div;
 }
 
-function updateTranscriptMsg(el, text) {
-  if (!el || !el._bodyEl) return;
-  el._fullText = text;
-  el._bodyEl.textContent = text;
-  transcript.scrollTop = transcript.scrollHeight;
+function updateTranscript(text) {
+  const el = currentScreen === 'voice' ? 
+    document.getElementById('voiceTranscript') : 
+    document.getElementById('videoTranscript');
+  if (el) {
+    if (el.style.display === 'none') el.style.display = 'block';
+    el.textContent = text;
+  }
 }
 
-// ─── Audio Capture (Mic) ─────────────────────────────
-const TARGET_SAMPLE_RATE = 16000;
+function scrollMessages() {
+  const el = document.getElementById('chatMessages');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+// Chat Form
+document.getElementById('chatForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  
+  ws.send(JSON.stringify({ type: 'text', text }));
+  addChatMsg('user', text);
+  input.value = '';
+});
+
+// Mic
+const TARGET_SR = 16000;
 
 async function startMic() {
-  micStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: { ideal: TARGET_SAMPLE_RATE }, channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  micStream = await navigator.mediaDevices.getUserMedia({ 
+    audio: { sampleRate: { ideal: TARGET_SR }, channelCount: 1, echoCancellation: true, noiseSuppression: true } 
+  });
   micContext = new AudioContext({ sampleRate: micStream.getAudioTracks()[0].getSettings().sampleRate || 48000 });
   const source = micContext.createMediaStreamSource(micStream);
   const nativeSR = micContext.sampleRate;
-
-  // ScriptProcessor for broad browser support (AudioWorklet is better but needs a separate file)
-  const bufferSize = 4096;
-  micProcessor = micContext.createScriptProcessor(bufferSize, 1, 1);
-
+  
+  micProcessor = micContext.createScriptProcessor(4096, 1, 1);
   micProcessor.onaudioprocess = (e) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     const input = e.inputBuffer.getChannelData(0);
-    const pcm16 = downsampleAndConvert(input, nativeSR, TARGET_SAMPLE_RATE);
+    const pcm16 = downsample(input, nativeSR, TARGET_SR);
     ws.send(pcm16.buffer);
   };
-
+  
   source.connect(micProcessor);
   micProcessor.connect(micContext.destination);
-  logEvent('sys', `Mic started (native ${nativeSR}Hz → ${TARGET_SAMPLE_RATE}Hz)`);
 }
 
-function downsampleAndConvert(float32, fromRate, toRate) {
+function downsample(float32, fromRate, toRate) {
   const ratio = fromRate / toRate;
-  const newLength = Math.floor(float32.length / ratio);
-  const int16 = new Int16Array(newLength);
-  for (let i = 0; i < newLength; i++) {
-    const srcIndex = i * ratio;
-    const low = Math.floor(srcIndex);
+  const newLen = Math.floor(float32.length / ratio);
+  const int16 = new Int16Array(newLen);
+  for (let i = 0; i < newLen; i++) {
+    const idx = i * ratio;
+    const low = Math.floor(idx);
     const high = Math.min(low + 1, float32.length - 1);
-    const frac = srcIndex - low;
+    const frac = idx - low;
     const sample = float32[low] * (1 - frac) + float32[high] * frac;
     int16[i] = Math.max(-32768, Math.min(32767, Math.round(sample * 32767)));
   }
@@ -346,67 +784,74 @@ function stopMic() {
   if (micProcessor) { micProcessor.disconnect(); micProcessor = null; }
   if (micContext) { micContext.close(); micContext = null; }
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
-  logEvent('sys', 'Mic stopped');
 }
 
-// ─── Camera Capture ──────────────────────────────────
+// Camera
 async function startCamera() {
-  camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 768 }, height: { ideal: 768 } } });
-  cameraVideo.srcObject = camStream;
-  cameraOverlay.style.display = 'none';
-
-  const track = camStream.getVideoTracks()[0];
-  const settings = track.getSettings();
-  cameraCanvas.width = settings.width || 640;
-  cameraCanvas.height = settings.height || 480;
-
+  camStream = await navigator.mediaDevices.getUserMedia({ 
+    video: { facingMode: 'environment', width: { ideal: 768 }, height: { ideal: 768 } } 
+  });
+  const video = document.getElementById('cameraVideo');
+  video.srcObject = camStream;
+  document.getElementById('videoOverlay').style.display = 'none';
+  
+  const canvas = document.getElementById('cameraCanvas');
+  const settings = camStream.getVideoTracks()[0].getSettings();
+  canvas.width = settings.width || 640;
+  canvas.height = settings.height || 480;
+  
   camInterval = setInterval(() => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    const ctx = cameraCanvas.getContext('2d');
-    ctx.drawImage(cameraVideo, 0, 0, cameraCanvas.width, cameraCanvas.height);
-    const dataUrl = cameraCanvas.toDataURL('image/jpeg', 0.7);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
     const base64 = dataUrl.split(',')[1];
-    const msg = JSON.stringify({ type: 'image', data: base64, mimeType: 'image/jpeg' });
-    ws.send(msg);
-    logEvent('up', `[image] ${(base64.length / 1024).toFixed(1)}KB`);
+    ws.send(JSON.stringify({ type: 'image', data: base64, mimeType: 'image/jpeg' }));
   }, 1000);
-
-  logEvent('sys', `Camera started (${cameraCanvas.width}x${cameraCanvas.height}, 1 FPS)`);
 }
 
 function stopCamera() {
   if (camInterval) { clearInterval(camInterval); camInterval = null; }
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
-  cameraVideo.srcObject = null;
-  cameraOverlay.style.display = 'block';
-  logEvent('sys', 'Camera stopped');
+  const video = document.getElementById('cameraVideo');
+  if (video) video.srcObject = null;
+  const overlay = document.getElementById('videoOverlay');
+  if (overlay) overlay.style.display = 'block';
 }
 
-// ─── Audio Playback (24kHz PCM from Gemini) ──────────
-const PLAYBACK_SAMPLE_RATE = 24000;
-let nextPlayTime = 0;
+// Audio Playback
+const PLAYBACK_SR = 24000;
+let audioEndTime = 0;
+let audioCheckInterval = null;
 
-function initPlaybackCtx() {
+function initPlayback() {
   if (!playbackCtx) {
-    playbackCtx = new AudioContext({ sampleRate: PLAYBACK_SAMPLE_RATE });
+    playbackCtx = new AudioContext({ sampleRate: PLAYBACK_SR });
     nextPlayTime = 0;
   }
   if (playbackCtx.state === 'suspended') {
-    playbackCtx.resume();
+    playbackCtx.resume().then(() => console.log('Audio context resumed'));
   }
 }
 
-function playAudioBuffer(arrayBuf) {
-  initPlaybackCtx();
+function showAudioIndicator(show) {
+  ['chatAudioIndicator', 'voiceAudioIndicator', 'videoAudioIndicator'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('playing', show);
+  });
+}
+
+function playAudio(arrayBuf) {
+  initPlayback();
   const evenLen = arrayBuf.byteLength - (arrayBuf.byteLength % 2);
   if (evenLen < 2) return;
   const view = new DataView(arrayBuf);
-  const sampleCount = evenLen / 2;
-  const float32 = new Float32Array(sampleCount);
-  for (let i = 0; i < sampleCount; i++) {
+  const count = evenLen / 2;
+  const float32 = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
     float32[i] = view.getInt16(i * 2, true) / 32768;
   }
-  const buffer = playbackCtx.createBuffer(1, sampleCount, PLAYBACK_SAMPLE_RATE);
+  const buffer = playbackCtx.createBuffer(1, count, PLAYBACK_SR);
   buffer.getChannelData(0).set(float32);
   const src = playbackCtx.createBufferSource();
   src.buffer = buffer;
@@ -415,86 +860,101 @@ function playAudioBuffer(arrayBuf) {
   const startAt = Math.max(now, nextPlayTime);
   src.start(startAt);
   nextPlayTime = startAt + buffer.duration;
+  audioEndTime = nextPlayTime;
+  
+  // Show audio indicator
+  showAudioIndicator(true);
+  
+  // Hide indicator when audio finishes
+  if (audioCheckInterval) clearInterval(audioCheckInterval);
+  audioCheckInterval = setInterval(() => {
+    if (playbackCtx && playbackCtx.currentTime >= audioEndTime) {
+      showAudioIndicator(false);
+      clearInterval(audioCheckInterval);
+      audioCheckInterval = null;
+    }
+  }, 100);
 }
 
-function enqueueAudio(base64) {
-  initPlaybackCtx();
+function playAudioB64(base64) {
+  initPlayback();
   const binary = atob(base64);
   const len = binary.length;
   const evenLen = len - (len % 2);
   const buf = new ArrayBuffer(evenLen);
   const u8 = new Uint8Array(buf);
   for (let i = 0; i < evenLen; i++) u8[i] = binary.charCodeAt(i);
-  playAudioBuffer(buf);
+  playAudio(buf);
 }
 
-function clearAudioQueue() {
-  audioQueue = [];
-  nextPlayTime = playbackCtx ? playbackCtx.currentTime : 0;
-  isPlaying = false;
-}
+// Button Handlers
+let micActive = false, camActive = false;
 
-// ─── Event Log ───────────────────────────────────────
-function logEvent(dir, text) {
-  const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
-  const arrow = dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'sys';
-  const symbol = dir === 'up' ? '\u2191' : dir === 'down' ? '\u2193' : '\u2022';
-  const entry = document.createElement('div');
-  entry.className = 'log-entry';
-  entry.innerHTML = `<span class="ts">${ts}</span><span class="dir ${arrow}">${symbol}</span>${escapeHtml(text)}`;
-  logEntries.appendChild(entry);
-  logEntries.scrollTop = logEntries.scrollHeight;
-}
-
-function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-// ─── Button Handlers ─────────────────────────────────
-let micActive = false;
-let camActive = false;
-
-micBtn.addEventListener('click', async () => {
+document.getElementById('micBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('micBtn');
+  const visual = document.getElementById('voiceVisual');
+  const status = document.getElementById('voiceStatusText');
+  
   if (!micActive) {
-    try { await startMic(); micActive = true; micBtn.textContent = 'Mic On'; micBtn.classList.add('active'); } catch (e) { logEvent('sys', 'Mic error: ' + e.message); }
+    try {
+      await startMic();
+      micActive = true;
+      btn.classList.add('active');
+      visual.classList.add('active');
+      status.textContent = 'Listening... speak now';
+    } catch (e) {
+      status.textContent = 'Mic error: ' + e.message;
+    }
   } else {
-    stopMic(); micActive = false; micBtn.textContent = 'Mic Off'; micBtn.classList.remove('active');
+    stopMic();
+    micActive = false;
+    btn.classList.remove('active');
+    visual.classList.remove('active');
+    status.textContent = 'Tap to start speaking';
   }
 });
 
-camBtn.addEventListener('click', async () => {
+document.getElementById('camBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('camBtn');
+  
   if (!camActive) {
-    try { await startCamera(); camActive = true; camBtn.textContent = 'Camera On'; camBtn.classList.add('active'); } catch (e) { logEvent('sys', 'Camera error: ' + e.message); }
+    try {
+      await startCamera();
+      camActive = true;
+      btn.classList.add('active');
+    } catch (e) {
+      console.error(e);
+    }
   } else {
-    stopCamera(); camActive = false; camBtn.textContent = 'Camera Off'; camBtn.classList.remove('active');
+    stopCamera();
+    camActive = false;
+    btn.classList.remove('active');
   }
 });
 
-textForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const text = textInput.value.trim();
-  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-  const msg = JSON.stringify({ type: 'text', text });
-  ws.send(msg);
-  addTranscriptMsg('user', text);
-  logEvent('up', `[text] ${text}`);
-  textInput.value = '';
+document.getElementById('videoMicBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('videoMicBtn');
+  
+  if (!micActive) {
+    try {
+      await startMic();
+      micActive = true;
+      btn.classList.add('active');
+    } catch (e) {
+      console.error(e);
+    }
+  } else {
+    stopMic();
+    micActive = false;
+    btn.classList.remove('active');
+  }
 });
 
-$('clearLog').addEventListener('click', () => { logEntries.innerHTML = ''; });
-
-// ─── Init ────────────────────────────────────────────
-// Browsers require a user gesture to start AudioContext.
-// Pre-init on the first click/tap anywhere on the page.
-document.addEventListener('click', function initAudioOnGesture() {
-  initPlaybackCtx();
-  document.removeEventListener('click', initAudioOnGesture);
-  logEvent('sys', 'Audio playback unlocked');
+// Init audio on first interaction
+document.addEventListener('click', function initAudio() {
+  initPlayback();
+  document.removeEventListener('click', initAudio);
 }, { once: true });
-
-connect();
 </script>
 </body>
 </html>
