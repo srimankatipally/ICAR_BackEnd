@@ -4,6 +4,12 @@
 
 A real-time, multimodal AI assistant for Indian oilseed farmers, powered by Google's Gemini Live API and Agent Development Kit (ADK). Kisan Mitra ("Farmer's Friend") helps farmers with crop management through natural voice conversations, text chat, and visual crop disease detection.
 
+## Quick Deploy
+
+[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run)
+
+> Click the button above to deploy your own instance of Kisan Mitra to Google Cloud Run in minutes. Requires a Google Cloud account with billing enabled.
+
 ## Demo
 
 **Live Application:** https://icar-vision-backend-ykitwyw32a-uc.a.run.app/
