@@ -47,7 +47,7 @@ gcloud run deploy "${SERVICE_NAME}" \
     --region "${REGION}" \
     --project "${PROJECT_ID}" \
     --service-account "${SERVICE_ACCOUNT}" \
-    --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION},CROP_DIR=./crop,DISEASE_DIR=./diseases,KNOWLEDGE_MODEL=gemini-2.5-flash,VISION_MODEL=gemini-2.5-flash" \
+    --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION},CROP_DIR=./crop,DISEASE_DIR=./diseases" \
     --session-affinity \
     --timeout 600 \
     --min-instances 0 \

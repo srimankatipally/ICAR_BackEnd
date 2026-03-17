@@ -22,14 +22,6 @@
     "DISEASE_DIR": {
       "description": "Path to disease knowledge base",
       "value": "./diseases"
-    },
-    "KNOWLEDGE_MODEL": {
-      "description": "Model for knowledge agent",
-      "value": "gemini-2.5-flash"
-    },
-    "VISION_MODEL": {
-      "description": "Model for vision agent",
-      "value": "gemini-2.5-flash"
     }
   },
   "hooks": {

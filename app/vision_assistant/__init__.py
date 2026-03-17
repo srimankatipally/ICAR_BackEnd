@@ -1,3 +1,3 @@
-from .agent import vision_agent
+from .agent import get_disease_knowledge
 
-__all__ = ["vision_agent"]
+__all__ = ["get_disease_knowledge"]
