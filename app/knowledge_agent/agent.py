@@ -17,10 +17,8 @@ Goal: Answer the user's query about oilseed crops grounded ONLY in the
 provided local text files.
 
 Plan:
-1) Decide the crop from the user's question. Call infer_crop with a
-   single-word candidate.
-2) After infer_crop returns a canonical crop (ok=true), call
-   read_crop_files to load all .txt files for that crop.
+1) Decide the crop from the user's question.
+2) Call get_crop_knowledge with the crop name to get all information.
 3) If the crop name is invalid or not found, tell the user which crops
    are available and ask for clarification.
 4) Read the tool output from BOTH the crop-specific files AND the
@@ -46,40 +44,34 @@ Style:
 - Keep it factual, focused, and grounded in the text files only."""
 
 
-def infer_crop(candidate: str) -> str:
-    """Resolve a crop name candidate to the canonical crop folder name.
+def get_crop_knowledge(crop: str) -> str:
+    """Get all knowledge about a specific oilseed crop including varieties,
+    pests, diseases, management practices, and general agricultural info.
 
     Args:
-        candidate: A single-word crop name to look up.
+        crop: The crop name (e.g., Sunflower, Groundnut, Soybean, Castor,
+              Linseed, Niger, Rapeseed-mustard, Safflower, Sesame).
 
     Returns:
-        JSON with ok=true and the resolved crop, or ok=false with
-        available crops.
+        JSON containing all crop-specific files and general agricultural
+        information. If crop not found, returns available crops list.
     """
-    resolved = knowledge_base.resolve_crop(candidate)
-    if resolved:
-        return json.dumps({"ok": True, "crop": resolved})
-    return json.dumps({
-        "ok": False,
-        "error": f"Could not match '{candidate}'",
-        "available_crops": knowledge_base.list_crops(),
-    })
-
-
-def read_crop_files(crop: str) -> str:
-    """Read all cached .txt file contents for the given crop folder name.
-    Also always includes the General folder content.
-
-    Args:
-        crop: The canonical crop folder name returned by infer_crop.
-
-    Returns:
-        JSON containing the crop files and general files content.
-    """
-    crop_content = knowledge_base.get_crop_content(crop)
+    resolved = knowledge_base.resolve_crop(crop)
+    if not resolved:
+        return json.dumps({
+            "ok": False,
+            "error": f"Could not match '{crop}'",
+            "available_crops": knowledge_base.list_crops(),
+        })
+    
+    crop_content = knowledge_base.get_crop_content(resolved)
     general_content = knowledge_base.get_general_content()
 
-    result = {"crop_files": crop_content}
+    result = {
+        "ok": True,
+        "crop": resolved,
+        "crop_files": crop_content,
+    }
     if general_content.get("ok"):
         result["general_files"] = general_content
 
@@ -89,7 +81,7 @@ def read_crop_files(crop: str) -> str:
 knowledge_agent = Agent(
     name="knowledge_agent",
     model=settings.KNOWLEDGE_MODEL,
-    tools=[infer_crop, read_crop_files],
+    tools=[get_crop_knowledge],
     description=(
         "Answers questions about oilseed crops (Castor, Groundnut, Linseed, "
         "Niger, Rapeseed-mustard, Safflower, Sesame, Soybean, Sunflower) "
