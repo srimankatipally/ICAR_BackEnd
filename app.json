@@ -5,10 +5,8 @@
     "allow-unauthenticated": true,
     "memory": "512Mi",
     "cpu": "1",
-    "timeout": "600",
-    "concurrency": "80",
-    "max-instances": "10",
-    "min-instances": "1"
+    "concurrency": 80,
+    "max-instances": 10
   },
   "env": {
     "GOOGLE_GENAI_USE_VERTEXAI": {
@@ -28,8 +26,6 @@
     "prebuild": {
       "commands": [
         "gcloud services enable aiplatform.googleapis.com run.googleapis.com cloudbuild.googleapis.com --project $GOOGLE_CLOUD_PROJECT",
-        "echo 'Waiting for APIs to initialize...'",
-        "sleep 30",
         "gcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT --member=serviceAccount:$(gcloud projects describe $GOOGLE_CLOUD_PROJECT --format='value(projectNumber)')-compute@developer.gserviceaccount.com --role=roles/aiplatform.user"
       ]
     }
