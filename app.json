@@ -8,7 +8,7 @@
     "timeout": "600",
     "concurrency": "80",
     "max-instances": "10",
-    "min-instances": "0"
+    "min-instances": "1"
   },
   "env": {
     "GOOGLE_GENAI_USE_VERTEXAI": {

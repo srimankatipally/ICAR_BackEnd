@@ -52,34 +52,33 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 │  │  ┌─────────────────────────────────────────────────────────────────┐  │  │
 │  │  │                    ADK Runner (Gemini Live)                      │  │  │
 │  │  │  ┌─────────────────────────────────────────────────────────┐    │  │  │
-│  │  │  │              ROOT AGENT (Live Audio)                     │    │  │  │
+│  │  │  │              ROOT AGENT (Live Audio + Vision)            │    │  │  │
 │  │  │  │         gemini-live-2.5-flash-native-audio               │    │  │  │
 │  │  │  │                                                          │    │  │  │
-│  │  │  │    ┌──────────────────┐    ┌──────────────────┐         │    │  │  │
-│  │  │  │    │ Knowledge Agent  │    │  Vision Agent    │         │    │  │  │
-│  │  │  │    │ (AgentTool)      │    │  (AgentTool)     │         │    │  │  │
-│  │  │  │    │                  │    │                  │         │    │  │  │
-│  │  │  │    │ • infer_crop()   │    │ • google_search  │         │    │  │  │
-│  │  │  │    │ • read_crop()    │    │ • disease_info() │         │    │  │  │
-│  │  │  │    └────────┬─────────┘    └────────┬─────────┘         │    │  │  │
-│  │  │  └─────────────┼───────────────────────┼───────────────────┘    │  │  │
-│  │  └────────────────┼───────────────────────┼────────────────────────┘  │  │
-│  └───────────────────┼───────────────────────┼───────────────────────────┘  │
-│                      ▼                       ▼                               │
-│  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
-│  │    Crop Knowledge Base   │  │  Disease Knowledge Base  │                 │
-│  │    /crop/*.txt           │  │  /diseases/*/            │                 │
-│  │                          │  │  (text + images)         │                 │
-│  │  • Castor                │  │                          │                 │
-│  │  • Groundnut             │  │  • Sunflower diseases    │                 │
-│  │  • Linseed               │  │  • Reference images      │                 │
-│  │  • Niger                 │  │                          │                 │
-│  │  • Rapeseed-mustard      │  │                          │                 │
-│  │  • Safflower             │  │                          │                 │
-│  │  • Sesame                │  │                          │                 │
-│  │  • Soybean               │  │                          │                 │
-│  │  • Sunflower             │  │                          │                 │
-│  └──────────────────────────┘  └──────────────────────────┘                 │
+│  │  │  │    ┌────────────────────────────────────────────────┐   │    │  │  │
+│  │  │  │    │            Direct Function Tools                │   │    │  │  │
+│  │  │  │    │                                                 │   │    │  │  │
+│  │  │  │    │  • get_crop_knowledge(crop)                     │   │    │  │  │
+│  │  │  │    │  • get_disease_knowledge(crop)                  │   │    │  │  │
+│  │  │  │    └──────────────┬──────────────────┬───────────────┘   │    │  │  │
+│  │  │  └───────────────────┼──────────────────┼───────────────────┘    │  │  │
+│  │  └──────────────────────┼──────────────────┼────────────────────────┘  │  │
+│  └─────────────────────────┼──────────────────┼───────────────────────────┘  │
+│                            ▼                  ▼                               │
+│  ┌──────────────────────────────┐  ┌──────────────────────────┐              │
+│  │    Crop Knowledge Base       │  │  Disease Knowledge Base  │              │
+│  │    /crop/*.txt               │  │  /diseases/*/            │              │
+│  │                              │  │  (text + images)         │              │
+│  │  • Castor                    │  │                          │              │
+│  │  • Groundnut                 │  │  • Sunflower diseases    │              │
+│  │  • Linseed                   │  │  • Reference images      │              │
+│  │  • Niger                     │  │                          │              │
+│  │  • Rapeseed-mustard          │  │                          │              │
+│  │  • Safflower                 │  │                          │              │
+│  │  • Sesame                    │  │                          │              │
+│  │  • Soybean                   │  │                          │              │
+│  │  • Sunflower                 │  │                          │              │
+│  └──────────────────────────────┘  └──────────────────────────┘              │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
@@ -96,10 +95,12 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 - **Text Chat**: Text-only mode for low-bandwidth scenarios
 - **Vision Analysis**: Camera-based crop disease detection
 
-### Multi-Agent Architecture
-- **Root Agent**: Gemini Live (`gemini-live-2.5-flash-native-audio`) - handles real-time voice/video
-- **Knowledge Agent**: Gemini Flash (`gemini-2.5-flash`) - queries crop knowledge base
-- **Vision Agent**: Gemini Flash (`gemini-2.5-flash`) - analyzes images for disease detection
+### Direct Tools Architecture
+- **Root Agent**: Gemini Live (`gemini-live-2.5-flash-native-audio`) - handles real-time voice/video/text with direct tool access
+- **get_crop_knowledge()**: Queries crop knowledge base for varieties, pests, diseases, management practices
+- **get_disease_knowledge()**: Retrieves disease symptoms, control measures, and reference images for visual comparison
+
+> **Performance Optimized**: Direct function tools eliminate sub-agent overhead, reducing response time from ~5-8s to ~2-3s.
 
 ### Knowledge Grounding
 - Curated knowledge base from ICAR-IIOR research
@@ -108,8 +109,10 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 - No hallucinations - responses grounded in authoritative sources
 
 ### Multilingual Support
-- Automatic language detection
-- Responds in user's language (Hindi, Telugu, English, etc.)
+- Automatic language detection and switching
+- Responds in user's language (Hindi, Telugu, Tamil, Kannada, Marathi, English, etc.)
+- Seamless mid-conversation language switching
+- Code-mixed speech support (Hinglish, Tenglish)
 
 ## Technology Stack
 
@@ -130,11 +133,11 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 │   ├── main.py                    # FastAPI app, WebSocket endpoints
 │   ├── config.py                  # Settings and system instructions
 │   ├── agents/
-│   │   └── root_agent.py          # Root live agent with AgentTools
+│   │   └── root_agent.py          # Root live agent with direct tools
 │   ├── knowledge_agent/
-│   │   └── agent.py               # Crop knowledge agent
+│   │   └── agent.py               # get_crop_knowledge() function
 │   ├── vision_assistant/
-│   │   └── agent.py               # Vision/disease detection agent
+│   │   └── agent.py               # get_disease_knowledge() function
 │   ├── knowledge/
 │   │   └── file_reader.py         # Crop knowledge base loader
 │   ├── disease_knowledge/
@@ -152,6 +155,7 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 │       ├── diseases.txt
 │       └── images/
 ├── deploy.sh                      # One-command Cloud Run deployment
+├── app.json                       # Cloud Run Button configuration
 ├── Dockerfile
 └── requirements.txt
 ```
@@ -268,8 +272,6 @@ gcloud run deploy kisan-mitra \
 | `GOOGLE_CLOUD_PROJECT` | GCP project ID | (required) |
 | `GOOGLE_CLOUD_LOCATION` | Vertex AI region | `us-central1` |
 | `DEMO_AGENT_MODEL` | Live model | `gemini-live-2.5-flash-native-audio` |
-| `KNOWLEDGE_MODEL` | Knowledge agent model | `gemini-2.5-flash` |
-| `VISION_MODEL` | Vision agent model | `gemini-2.5-flash` |
 | `CROP_DIR` | Crop knowledge path | `./crop` |
 | `DISEASE_DIR` | Disease knowledge path | `./diseases` |
 
