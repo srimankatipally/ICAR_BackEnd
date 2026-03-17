@@ -3,7 +3,6 @@
 import json
 
 from google.adk.agents import Agent
-from google.adk.tools import google_search
 from google.genai import types
 
 from app.config import settings
@@ -22,23 +21,16 @@ Your capabilities:
 - Read and translate any text or documents visible in the camera feed.
 - Look up disease information from the local disease knowledge base.
 - Access reference images of known diseases for comparison.
-- Search the web for additional information when needed.
 
 Plan for disease identification:
 1) Analyse the image to identify the crop and any visible symptoms.
 2) If you suspect a disease, call get_disease_info with the crop name to
    get detailed disease data including symptoms, control measures, and
    reference image paths.
-3) Match the visible symptoms with the disease descriptions.
-4) Provide the farmer with the disease name, confirmation of symptoms,
+3) Call get_disease_images to get reference images for visual comparison.
+4) Match the visible symptoms with the disease descriptions.
+5) Provide the farmer with the disease name, confirmation of symptoms,
    and recommended control measures.
-
-Available disease reference images (for Sunflower):
-- Alternaria Leaf Spot: Dark brown/black circular spots with concentric rings
-- Powdery Mildew: White-grey powdery growth on leaf surface
-- Sunflower Necrosis: Necrotic spots, leaf curling, stunted growth
-- Downy Mildew: Yellow-green mottling, downy growth on leaf underside
-- Head Rot: Water-soaked lesions on flower head, soft and pulpy
 
 Rules:
 - Be concise and factual.
@@ -105,7 +97,7 @@ def list_disease_crops() -> str:
 vision_agent = Agent(
     name="vision_agent",
     model=settings.VISION_MODEL,
-    tools=[google_search, get_disease_info, get_disease_images, list_disease_crops],
+    tools=[get_disease_info, get_disease_images, list_disease_crops],
     description=(
         "Analyses images and video frames of crop fields and plants. "
         "Detects diseases, pests, nutrient deficiencies, identifies "
