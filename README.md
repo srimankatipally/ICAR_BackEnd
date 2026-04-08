@@ -121,7 +121,7 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 | **AI Framework** | Google Agent Development Kit (ADK) |
 | **Model** | Gemini Live 2.5 Flash Native Audio |
 | **Backend** | FastAPI (Python 3.12) |
-| **Hosting** | Google Cloud Run |
+| **Hosting** | Google Cloud Run / Compute Engine |
 | **AI Platform** | Vertex AI |
 | **Real-time Communication** | WebSockets |
 | **Frontend** | Vanilla HTML/CSS/JS (Mobile-first) |
@@ -154,8 +154,15 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 │   └── Sunflower/
 │       ├── diseases.txt
 │       └── images/
-├── deploy.sh                      # One-command Cloud Run deployment
-├── app.json                       # Cloud Run Button configuration
+├── cloudrun/                     # Cloud Run deployment (us-central1)
+│   ├── deploy.sh                 # One-command Cloud Run deployment
+│   ├── app.json                  # Cloud Run Button configuration
+│   ├── .env.example              # Cloud Run environment variables
+│   └── README.md                 # Cloud Run deployment guide
+├── gce/                          # Compute Engine deployment (asia-south1)
+│   ├── deploy.sh                 # One-command GCE deployment
+│   ├── .env.example              # GCE environment variables
+│   └── README.md                 # GCE deployment guide
 ├── Dockerfile
 └── requirements.txt
 ```
@@ -182,9 +189,9 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your GCP project ID
+# Configure environment (pick one based on your deployment target)
+cp cloudrun/.env.example .env   # for Cloud Run / local dev
+# cp gce/.env.example .env      # for Compute Engine (India region)
 ```
 
 ### Run Locally
@@ -203,29 +210,33 @@ python test_ws.py
 
 ## Cloud Deployment
 
-### Automated Deployment
+Two deployment options are available, each in its own self-contained folder:
+
+| | Cloud Run | Compute Engine |
+|---|---|---|
+| **Folder** | [`cloudrun/`](cloudrun/) | [`gce/`](gce/) |
+| **Region** | us-central1 | asia-south1 (Mumbai, India) |
+| **Type** | Serverless (scales to zero) | Persistent VM (always on) |
+| **Best for** | Demos, variable traffic | Production in India, low latency |
+| **Guide** | [cloudrun/README.md](cloudrun/README.md) | [gce/README.md](gce/README.md) |
+
+### Option 1: Cloud Run (Serverless)
 
 ```bash
 export GOOGLE_CLOUD_PROJECT=your-project-id
-./deploy.sh
+./cloudrun/deploy.sh
 ```
 
-The script automatically:
-1. Enables required APIs (Vertex AI, Cloud Run, Cloud Build)
-2. Creates service account with `roles/aiplatform.user`
-3. Builds and deploys container to Cloud Run
-4. Outputs the service URL
+See [cloudrun/README.md](cloudrun/README.md) for full instructions, one-click deploy button, and manual steps.
 
-### Manual Deployment
+### Option 2: Compute Engine (Persistent VM in India)
 
 ```bash
-gcloud run deploy kisan-mitra \
-  --source . \
-  --region us-central1 \
-  --project $GOOGLE_CLOUD_PROJECT \
-  --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT" \
-  --allow-unauthenticated
+export GOOGLE_CLOUD_PROJECT=your-project-id
+./gce/deploy.sh
 ```
+
+See [gce/README.md](gce/README.md) for full instructions including Vertex AI permissions, systemd setup, HTTPS with Nginx, and cleanup.
 
 ## API Reference
 
@@ -292,7 +303,7 @@ This project qualifies for the **Live Agents** category because:
 |-------------|----------------|
 | Gemini Model | `gemini-live-2.5-flash-native-audio` |
 | Google GenAI SDK or ADK | ADK (Agent Development Kit) |
-| Google Cloud Service | Cloud Run, Vertex AI |
+| Google Cloud Service | Cloud Run, Compute Engine, Vertex AI |
 
 
 

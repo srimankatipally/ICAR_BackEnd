@@ -4,20 +4,40 @@ set -euo pipefail
 # ============================================================
 # ICAR Vision Backend — Cloud Run Deployment
 # ============================================================
+# Deploys to Cloud Run (serverless) in us-central1.
+# Run this script from the PROJECT ROOT (parent of cloudrun/).
+#
 # Prerequisites:
 #   - gcloud CLI installed and authenticated (gcloud auth login)
 #   - A GCP project with billing enabled
-#   - Vertex AI API enabled:
-#       gcloud services enable aiplatform.googleapis.com
+#
+# Usage:
+#   export GOOGLE_CLOUD_PROJECT=your-project-id
+#   cd /path/to/project-root
+#   ./cloudrun/deploy.sh
 # ============================================================
 
-PROJECT_ID="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT env var}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Load env from cloudrun/.env if it exists
+if [[ -f "${SCRIPT_DIR}/.env" ]]; then
+    set -a
+    source "${SCRIPT_DIR}/.env"
+    set +a
+fi
+
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT env var or add it to cloudrun/.env}"
 REGION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
 SERVICE_NAME="icar-vision-backend"
 SA_NAME="${SERVICE_NAME}"
 SERVICE_ACCOUNT="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
-echo "==> Deploying ${SERVICE_NAME} to ${REGION} in project ${PROJECT_ID}"
+echo "==> Deploying ${SERVICE_NAME} to Cloud Run"
+echo "    Project:  ${PROJECT_ID}"
+echo "    Region:   ${REGION}"
+echo "    Source:   ${PROJECT_ROOT}"
+echo ""
 
 # 1. Enable required APIs
 echo "==> Enabling APIs..."
@@ -40,10 +60,10 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --role="roles/aiplatform.user" \
     --quiet
 
-# 4. Deploy to Cloud Run
+# 4. Deploy to Cloud Run (from project root where Dockerfile lives)
 echo "==> Deploying to Cloud Run..."
 gcloud run deploy "${SERVICE_NAME}" \
-    --source . \
+    --source "${PROJECT_ROOT}" \
     --region "${REGION}" \
     --project "${PROJECT_ID}" \
     --service-account "${SERVICE_ACCOUNT}" \
@@ -64,7 +84,7 @@ SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" \
 
 echo ""
 echo "============================================================"
-echo "Deployment complete!"
+echo "Cloud Run deployment complete!"
 echo "Service URL: ${SERVICE_URL}"
 echo "WebSocket:   ${SERVICE_URL/https/wss}/ws/{user_id}/{session_id}"
 echo "Health:      ${SERVICE_URL}/health"
