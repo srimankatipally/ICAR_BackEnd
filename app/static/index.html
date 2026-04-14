@@ -78,6 +78,43 @@ body {
   animation: fadeSlideUp 0.6s ease forwards 0.5s;
 }
 
+.org-branding {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  opacity: 0;
+  animation: fadeSlideUp 0.6s ease forwards 0.8s;
+}
+
+.org-branding strong {
+  font-size: 15px;
+  color: var(--primary);
+}
+
+.org-branding span {
+  font-size: 12px;
+  color: #666;
+}
+
+.org-branding.page-branding {
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-top: 24px;
+  opacity: 1;
+  animation: none;
+}
+
+.beta-tag {
+  font-size: 10px;
+  font-weight: 500;
+  background: rgba(255,255,255,0.25);
+  padding: 2px 8px;
+  border-radius: 10px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
 @keyframes pulse {
   0% { transform: scale(0.5); opacity: 0; }
   50% { transform: scale(1.1); }
@@ -475,11 +512,21 @@ body {
     <div class="namaste">🙏</div>
     <h1>Namaste!</h1>
     <p>Welcome to Kisan Mitra</p>
+    <div class="org-branding">
+      <strong>Oilseeds Kisaan Mitra</strong>
+      <span>ICAR-Indian Institute of Oilseeds Research</span>
+      <span>Rajendranagar, Hyderabad-500030</span>
+    </div>
   </div>
 </div>
 
 <!-- Screen 2: Action -->
 <div id="action" class="screen">
+  <div class="org-branding page-branding">
+    <strong>Oilseeds Kisaan Mitra</strong>
+    <span>ICAR-Indian Institute of Oilseeds Research</span>
+    <span>Rajendranagar, Hyderabad-500030</span>
+  </div>
   <div class="action-card">
     <h2>How would you like to continue?</h2>
     <p>Choose your preferred way to get help with oilseed crops</p>
@@ -494,6 +541,11 @@ body {
 
 <!-- Screen 3: AI Options -->
 <div id="ai-options" class="screen">
+  <div class="org-branding page-branding">
+    <strong>Oilseeds Kisaan Mitra</strong>
+    <span>ICAR-Indian Institute of Oilseeds Research</span>
+    <span>Rajendranagar, Hyderabad-500030</span>
+  </div>
   <div class="options-header">
     <h2>Choose Interaction Mode</h2>
   </div>
@@ -527,7 +579,7 @@ body {
 <div id="chat" class="screen">
   <div class="chat-header">
     <button class="back-btn" onclick="goBackFromAI()">←</button>
-    <h3>Text Chat</h3>
+    <h3>Text Chat <span class="beta-tag">Beta Ver. 1.0</span></h3>
     <div class="status-dot" id="chatStatus"></div>
   </div>
   <div class="messages" id="chatMessages"></div>
@@ -541,7 +593,7 @@ body {
 <div id="voice" class="screen">
   <div class="chat-header">
     <button class="back-btn" onclick="goBackFromAI()">←</button>
-    <h3>Voice Assistant</h3>
+    <h3>Voice Assistant <span class="beta-tag">Beta Ver. 1.0</span></h3>
     <div class="audio-indicator" id="voiceAudioIndicator">🔊 Speaking</div>
     <div class="status-dot" id="voiceStatus"></div>
   </div>
@@ -557,7 +609,7 @@ body {
 <div id="video" class="screen">
   <div class="chat-header">
     <button class="back-btn" onclick="goBackFromAI()">←</button>
-    <h3>Video Query</h3>
+    <h3>Video Query <span class="beta-tag">Beta Ver. 1.0</span></h3>
     <div class="audio-indicator" id="videoAudioIndicator">🔊 Speaking</div>
     <div class="status-dot" id="videoStatus"></div>
   </div>

@@ -1,0 +1,23 @@
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'icar-vision-backend'
+      - '--source=.'
+      - '--region=us-central1'
+      - '--service-account=icar-vision-backend@${PROJECT_ID}.iam.gserviceaccount.com'
+      - '--set-env-vars=GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=us-central1,CROP_DIR=./crop,DISEASE_DIR=./diseases,GCS_CONVERSATION_BUCKET=kisan-mitra-conversations,RECORD_AUDIO=true,DEPLOYMENT_TAG=cloudrun'
+      - '--session-affinity'
+      - '--timeout=600'
+      - '--min-instances=1'
+      - '--max-instances=10'
+      - '--port=8080'
+      - '--allow-unauthenticated'
+      - '--labels=deployment=cloudrun,app=kisan-mitra,env=production'
+
+timeout: '1200s'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

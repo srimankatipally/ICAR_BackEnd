@@ -1,0 +1,72 @@
+steps:
+  # Step 1: Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/${PROJECT_ID}/kisan-mitra/app:${COMMIT_SHA}'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/${PROJECT_ID}/kisan-mitra/app:latest'
+      - '.'
+
+  # Step 2: Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-south1-docker.pkg.dev/${PROJECT_ID}/kisan-mitra/app:${COMMIT_SHA}'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-south1-docker.pkg.dev/${PROJECT_ID}/kisan-mitra/app:latest'
+
+  # Step 3: SSH into GCE VM and deploy new image
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        gcloud compute ssh kisan-mitra-vm \
+          --zone=asia-south1-b \
+          --project=${PROJECT_ID} \
+          --command="
+            echo '==> Pulling new image...'
+            sudo docker pull asia-south1-docker.pkg.dev/${PROJECT_ID}/kisan-mitra/app:latest
+
+            echo '==> Stopping old container...'
+            sudo docker stop kisan-mitra 2>/dev/null || true
+            sudo docker rm kisan-mitra 2>/dev/null || true
+
+            echo '==> Writing .env file...'
+            cat > /tmp/kisan-mitra.env << 'ENVEOF'
+        GOOGLE_GENAI_USE_VERTEXAI=TRUE
+        GOOGLE_CLOUD_PROJECT=${PROJECT_ID}
+        GOOGLE_CLOUD_LOCATION=us-central1
+        DEMO_AGENT_MODEL=gemini-live-2.5-flash-native-audio
+        CROP_DIR=./crop
+        DISEASE_DIR=./diseases
+        GCS_CONVERSATION_BUCKET=kisan-mitra-conversations
+        RECORD_AUDIO=true
+        DEPLOYMENT_TAG=gce
+        ENVEOF
+            sudo mv /tmp/kisan-mitra.env /opt/kisan-mitra/.env
+
+            echo '==> Starting new container...'
+            sudo docker run -d \
+              --name kisan-mitra \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              --env-file /opt/kisan-mitra/.env \
+              asia-south1-docker.pkg.dev/${PROJECT_ID}/kisan-mitra/app:latest
+
+            echo '==> GCE deployment complete!'
+          "
+
+images:
+  - 'asia-south1-docker.pkg.dev/${PROJECT_ID}/kisan-mitra/app:${COMMIT_SHA}'
+  - 'asia-south1-docker.pkg.dev/${PROJECT_ID}/kisan-mitra/app:latest'
+
+timeout: '1200s'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
