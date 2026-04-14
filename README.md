@@ -121,6 +121,33 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 - Seamless mid-conversation language switching
 - Code-mixed speech support (Hinglish, Tenglish)
 
+### Language Deep Links
+
+Direct URLs to open voice chat in a specific language:
+
+| URL Path | Language | Greeting |
+|----------|----------|----------|
+| `/auto` | Auto-detect | (waits for user to speak) |
+| `/hindi` | Hindi | नमस्ते, कृपया हिंदी में बात करें |
+| `/telugu` | Telugu | నమస్కారం, దయచేసి తెలుగులో మాట్లాడండి |
+| `/tamil` | Tamil | வணக்கம், தமிழில் பேசுங்கள் |
+| `/kannada` | Kannada | ನಮಸ್ಕಾರ, ದಯವಿಟ್ಟು ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡಿ |
+| `/malayalam` | Malayalam | നമസ്കാരം, ദയവായി മലയാളത്തിൽ സംസാരിക്കുക |
+| `/marathi` | Marathi | नमस्कार, कृपया मराठीत बोला |
+| `/gujarati` | Gujarati | નમસ્તે, કૃપા કરીને ગુજરાતીમાં વાત કરો |
+| `/bengali` | Bengali | নমস্কার, অনুগ্রহ করে বাংলায় কথা বলুন |
+| `/odia` | Odia | ନମସ୍କାର, ଦୟାକରି ଓଡ଼ିଆରେ କଥା ହୁଅନ୍ତୁ |
+| `/punjabi` | Punjabi | ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਕਿਰਪਾ ਕਰਕੇ ਪੰਜਾਬੀ ਵਿੱਚ ਗੱਲ ਕਰੋ |
+
+**Usage:** Share `https://your-domain.com/telugu` to let users start directly in Telugu voice mode.
+
+**Features:**
+- Skips landing screens, goes directly to voice chat
+- Auto-starts microphone (requests permission)
+- Sends greeting in the specified language
+- AI responds in that language immediately
+- Users can still switch languages mid-conversation
+
 ## Technology Stack
 
 | Component | Technology |
@@ -321,6 +348,31 @@ gcloud builds triggers run deploy-cloudrun --region=us-central1 --project=icarfi
 gcloud builds triggers run deploy-gce --region=us-central1 --project=icarfinal --branch=main
 ```
 
+### Multi-Stage Docker Build
+
+The Dockerfile uses multi-stage builds for faster CI/CD:
+
+```dockerfile
+# Stage 1: Dependencies (cached layer)
+FROM python:3.12-slim AS base
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Application (rebuilt on code changes)
+FROM base AS app
+COPY . .
+```
+
+**Build Time Improvements:**
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| First build | ~3-4 min | ~3-4 min |
+| Code change only | ~3-4 min | ~30-60 sec |
+| requirements.txt change | ~3-4 min | ~3-4 min |
+
+The GCE build uses `--cache-from` to pull the previous image and reuse cached layers.
+
 ## API Reference
 
 ### WebSocket Endpoints
@@ -329,6 +381,21 @@ gcloud builds triggers run deploy-gce --region=us-central1 --project=icarfinal -
 |----------|------|-------------|
 | `/ws/{user_id}/{session_id}` | Audio | Voice/Video mode with audio responses |
 | `/ws/text/{user_id}/{session_id}` | Text | Text-only mode |
+
+### Session Isolation
+
+Each WebSocket connection gets its own isolated ADK Runner and SessionService to prevent session mixing between users:
+
+```
+User A ──► Runner A ──► SessionService A ──► Gemini Session A
+User B ──► Runner B ──► SessionService B ──► Gemini Session B
+```
+
+**Features:**
+- Per-connection Runner instances (no shared state)
+- Unique connection IDs in logs for debugging (e.g., `[a1b2c3d4]`)
+- Cryptographically strong UUIDs for user and session IDs
+- Complete isolation even on the same Cloud Run instance
 
 ### Client → Server Messages
 
@@ -357,6 +424,7 @@ gcloud builds triggers run deploy-gce --region=us-central1 --project=icarfinal -
 | GET | `/test` | Developer test console |
 | GET | `/health` | Health check |
 | GET | `/config` | Public configuration |
+| GET | `/{language}` | Language deep link (e.g., `/telugu`, `/hindi`, `/auto`) |
 
 ## Environment Variables
 
