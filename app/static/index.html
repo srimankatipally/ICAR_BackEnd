@@ -195,6 +195,13 @@ body {
 
 .option-card:active { transform: scale(0.98); }
 
+.option-card.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+  position: relative;
+}
+
 .option-icon {
   width: 56px;
   height: 56px;
@@ -505,11 +512,11 @@ body {
         <p>Speak naturally in any language</p>
       </div>
     </div>
-    <div class="option-card" onclick="showScreen('video')">
+    <div class="option-card disabled" title="Under Development">
       <div class="option-icon video">📹</div>
       <div class="option-info">
         <h3>Video Query</h3>
-        <p>Show your crop for disease detection</p>
+        <p>Under Development</p>
       </div>
     </div>
   </div>
@@ -568,8 +575,9 @@ body {
 
 <script>
 // State
-const userId = 'user-' + Math.random().toString(36).slice(2, 8);
-const sessionId = 'session-' + Date.now();
+const userId = sessionStorage.getItem('kisanUserId') || ('user-' + crypto.randomUUID());
+sessionStorage.setItem('kisanUserId', userId);
+let sessionId = null;
 let ws = null;
 let currentScreen = 'landing';
 let micStream = null, micContext = null, micProcessor = null;
@@ -611,6 +619,7 @@ setTimeout(() => showScreen('action'), 2000);
 
 // WebSocket
 function connectWS(textOnly = false) {
+  sessionId = 'session-' + crypto.randomUUID();
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   // Use /ws/text/ for chat mode (text-only), /ws/ for voice/video (audio)
   const path = textOnly ? `/ws/text/${userId}/${sessionId}` : `/ws/${userId}/${sessionId}`;

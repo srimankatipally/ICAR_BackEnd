@@ -136,6 +136,7 @@ gcloud compute instances create "${INSTANCE_NAME}" \
     --scopes=cloud-platform \
     --tags=kisan-mitra \
     --address="${STATIC_IP}" \
+    --labels "deployment=gce,app=kisan-mitra,env=production" \
     --metadata=enable-oslogin=TRUE \
     --project="${PROJECT_ID}" 2>/dev/null || {
         echo "    VM already exists or creation failed. Continuing..."
@@ -218,6 +219,7 @@ CROP_DIR=./crop
 DISEASE_DIR=./diseases
 GCS_CONVERSATION_BUCKET=${CONV_BUCKET}
 RECORD_AUDIO=true
+DEPLOYMENT_TAG=gce
 ENVEOF
     "
 

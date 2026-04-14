@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     GCS_CONVERSATION_BUCKET: str = os.getenv("GCS_CONVERSATION_BUCKET", "")
     RECORD_AUDIO: bool = os.getenv("RECORD_AUDIO", "true").lower() in ("true", "1", "yes")
 
+    DEPLOYMENT_TAG: str = os.getenv("DEPLOYMENT_TAG", "unknown")
+
     MAX_SESSIONS: int = 10
     CORS_ORIGINS: list[str] = ["*"]
 

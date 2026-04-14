@@ -87,13 +87,14 @@ gcloud run deploy "${SERVICE_NAME}" \
     --region "${REGION}" \
     --project "${PROJECT_ID}" \
     --service-account "${SERVICE_ACCOUNT}" \
-    --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION},CROP_DIR=./crop,DISEASE_DIR=./diseases,GCS_CONVERSATION_BUCKET=${CONV_BUCKET},RECORD_AUDIO=true" \
+    --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION},CROP_DIR=./crop,DISEASE_DIR=./diseases,GCS_CONVERSATION_BUCKET=${CONV_BUCKET},RECORD_AUDIO=true,DEPLOYMENT_TAG=cloudrun" \
     --session-affinity \
     --timeout 600 \
     --min-instances 1 \
     --max-instances 10 \
     --port 8080 \
     --allow-unauthenticated \
+    --labels "deployment=cloudrun,app=kisan-mitra,env=production" \
     --quiet
 
 # 5. Print the service URL

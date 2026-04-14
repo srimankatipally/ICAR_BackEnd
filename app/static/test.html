@@ -365,8 +365,8 @@
 
 <script>
 // ─── State ───────────────────────────────────────────
-const userId = 'test-user';
-const sessionId = 'test-' + Math.random().toString(36).slice(2, 8);
+const userId = 'test-' + crypto.randomUUID().slice(0, 8);
+let sessionId = null;
 let ws = null;
 let micStream = null;
 let micContext = null;
@@ -393,6 +393,7 @@ const cameraOverlay=$('cameraOverlay');
 
 // ─── WebSocket ───────────────────────────────────────
 function connect() {
+  sessionId = 'test-' + crypto.randomUUID();
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = `${proto}//${location.host}/ws/${userId}/${sessionId}`;
   logEvent('sys', `Connecting to ${url}`);
