@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 import logging
+import uuid
 import warnings
 from pathlib import Path
 
@@ -49,9 +50,6 @@ app.add_middleware(
 
 static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-session_service = InMemorySessionService()
-runner = Runner(app_name=APP_NAME, agent=root_agent, session_service=session_service)
 
 
 # --- REST Endpoints ---
@@ -146,17 +144,37 @@ async def _handle_websocket(
 
     Audio is sent as binary WebSocket frames (raw PCM 16kHz 16-bit mono).
     Text and images are sent as JSON text frames.
+    
+    Each connection gets its own isolated Runner and SessionService to prevent
+    session mixing between users.
     """
+    # Generate unique connection ID for logging
+    conn_id = str(uuid.uuid4())[:8]
+    
     logger.info(
-        "WebSocket connection request: user_id=%s, session_id=%s, use_audio=%s",
+        "[%s] WebSocket connection request: user_id=%s, session_id=%s, use_audio=%s",
+        conn_id,
         user_id,
         session_id,
         use_audio,
     )
     await websocket.accept()
-    logger.info("WebSocket connection accepted")
+    logger.info("[%s] WebSocket connection accepted", conn_id)
 
     # --- Phase 2: Session Initialization ---
+    # Create per-connection session service and runner for complete isolation
+    connection_session_service = InMemorySessionService()
+    connection_runner = Runner(
+        app_name=APP_NAME,
+        agent=root_agent,
+        session_service=connection_session_service
+    )
+    
+    # Create session in this connection's isolated service
+    await connection_session_service.create_session(
+        app_name=APP_NAME, user_id=user_id, session_id=session_id
+    )
+    logger.info("[%s] Created isolated session for user=%s, session=%s", conn_id, user_id, session_id)
 
     if use_audio and "native-audio" in settings.GEMINI_MODEL.lower():
         run_config = RunConfig(
@@ -171,14 +189,6 @@ async def _handle_websocket(
             streaming_mode=StreamingMode.BIDI,
             response_modalities=["TEXT"],
             session_resumption=types.SessionResumptionConfig(),
-        )
-
-    session = await session_service.get_session(
-        app_name=APP_NAME, user_id=user_id, session_id=session_id
-    )
-    if not session:
-        await session_service.create_session(
-            app_name=APP_NAME, user_id=user_id, session_id=session_id
         )
 
     live_request_queue = LiveRequestQueue()
@@ -198,7 +208,7 @@ async def _handle_websocket(
 
             if "bytes" in message:
                 audio_data = message["bytes"]
-                logger.debug("Received audio chunk: %d bytes", len(audio_data))
+                logger.debug("[%s] Received audio chunk: %d bytes", conn_id, len(audio_data))
                 audio_blob = types.Blob(
                     mime_type="audio/pcm;rate=16000", data=audio_data
                 )
@@ -207,12 +217,12 @@ async def _handle_websocket(
 
             elif "text" in message:
                 text_data = message["text"]
-                logger.debug("Received text frame: %s", text_data[:120])
+                logger.debug("[%s] Received text frame: %s", conn_id, text_data[:120])
 
                 try:
                     json_message = json.loads(text_data)
                 except json.JSONDecodeError:
-                    logger.warning("Invalid JSON from client, ignoring")
+                    logger.warning("[%s] Invalid JSON from client, ignoring", conn_id)
                     continue
 
                 msg_type = json_message.get("type")
@@ -228,7 +238,8 @@ async def _handle_websocket(
                     image_data = base64.b64decode(json_message["data"])
                     mime_type = json_message.get("mimeType", "image/jpeg")
                     logger.debug(
-                        "Sending image: %d bytes, type: %s",
+                        "[%s] Sending image: %d bytes, type: %s",
+                        conn_id,
                         len(image_data),
                         mime_type,
                     )
@@ -236,7 +247,7 @@ async def _handle_websocket(
                     live_request_queue.send_realtime(image_blob)
 
                 else:
-                    logger.warning("Unknown message type: %s", msg_type)
+                    logger.warning("[%s] Unknown message type: %s", conn_id, msg_type)
 
     async def downstream_task() -> None:
         """Receive ADK events from run_live() and forward to the client WebSocket.
@@ -248,7 +259,7 @@ async def _handle_websocket(
         """
         event_count = 0
         audio_count = 0
-        async for event in runner.run_live(
+        async for event in connection_runner.run_live(
             user_id=user_id,
             session_id=session_id,
             live_request_queue=live_request_queue,
@@ -307,7 +318,8 @@ async def _handle_websocket(
                     pass
 
         logger.info(
-            "run_live finished: %d events total, %d audio events",
+            "[%s] run_live finished: %d events total, %d audio events",
+            conn_id,
             event_count,
             audio_count,
         )
@@ -315,11 +327,11 @@ async def _handle_websocket(
     try:
         await asyncio.gather(upstream_task(), downstream_task())
     except WebSocketDisconnect:
-        logger.info("Client disconnected: user_id=%s, session_id=%s", user_id, session_id)
+        logger.info("[%s] Client disconnected: user_id=%s, session_id=%s", conn_id, user_id, session_id)
     except Exception as e:
-        logger.error("Streaming error: %s", e, exc_info=True)
+        logger.error("[%s] Streaming error: %s", conn_id, e, exc_info=True)
     finally:
         # --- Phase 4: Session Termination ---
         live_request_queue.close()
         await conv_logger.flush()
-        logger.info("Session closed: user_id=%s, session_id=%s", user_id, session_id)
+        logger.info("[%s] Session closed: user_id=%s, session_id=%s", conn_id, user_id, session_id)
