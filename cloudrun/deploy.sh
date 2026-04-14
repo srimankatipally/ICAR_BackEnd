@@ -60,6 +60,26 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --role="roles/aiplatform.user" \
     --quiet
 
+# 3b. Create conversation recording bucket and grant write access
+CONV_BUCKET="${GCS_CONVERSATION_BUCKET:-kisan-mitra-conversations}"
+echo "==> Creating GCS bucket gs://${CONV_BUCKET} for conversation recordings..."
+gcloud storage buckets create "gs://${CONV_BUCKET}" \
+    --location="${REGION}" \
+    --project="${PROJECT_ID}" \
+    --uniform-bucket-level-access 2>/dev/null || true
+
+echo "==> Granting roles/storage.objectCreator to ${SERVICE_ACCOUNT} on gs://${CONV_BUCKET}..."
+gcloud storage buckets add-iam-policy-binding "gs://${CONV_BUCKET}" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="roles/storage.objectCreator" \
+    --quiet 2>/dev/null || true
+
+echo "==> Granting roles/storage.objectViewer to ${SERVICE_ACCOUNT} on gs://${CONV_BUCKET}..."
+gcloud storage buckets add-iam-policy-binding "gs://${CONV_BUCKET}" \
+    --member="serviceAccount:${SERVICE_ACCOUNT}" \
+    --role="roles/storage.objectViewer" \
+    --quiet 2>/dev/null || true
+
 # 4. Deploy to Cloud Run (from project root where Dockerfile lives)
 echo "==> Deploying to Cloud Run..."
 gcloud run deploy "${SERVICE_NAME}" \
@@ -67,7 +87,7 @@ gcloud run deploy "${SERVICE_NAME}" \
     --region "${REGION}" \
     --project "${PROJECT_ID}" \
     --service-account "${SERVICE_ACCOUNT}" \
-    --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION},CROP_DIR=./crop,DISEASE_DIR=./diseases" \
+    --set-env-vars "GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${REGION},CROP_DIR=./crop,DISEASE_DIR=./diseases,GCS_CONVERSATION_BUCKET=${CONV_BUCKET},RECORD_AUDIO=true" \
     --session-affinity \
     --timeout 600 \
     --min-instances 1 \

@@ -24,6 +24,7 @@ from google.genai import types  # noqa: E402
 
 from app.config import settings  # noqa: E402
 from app.agents.root_agent import root_agent  # noqa: E402
+from app.conversation_logger import ConversationLogger, list_recent_sessions  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -80,6 +81,14 @@ async def public_config():
         "gcp_location": settings.GCP_LOCATION,
         "max_sessions": settings.MAX_SESSIONS,
     }
+
+
+@app.get("/conversations")
+async def get_conversations(limit: int = 50):
+    """List recent recorded conversation sessions from GCS."""
+    loop = asyncio.get_event_loop()
+    sessions = await loop.run_in_executor(None, list_recent_sessions, limit)
+    return {"sessions": sessions, "count": len(sessions)}
 
 
 # --- WebSocket Endpoint ---
@@ -152,6 +161,12 @@ async def _handle_websocket(
 
     live_request_queue = LiveRequestQueue()
 
+    conv_logger = ConversationLogger(
+        user_id=user_id,
+        session_id=session_id,
+        mode="audio" if use_audio else "text",
+    )
+
     # --- Phase 3: Active Session (concurrent bidirectional communication) ---
 
     async def upstream_task() -> None:
@@ -166,6 +181,7 @@ async def _handle_websocket(
                     mime_type="audio/pcm;rate=16000", data=audio_data
                 )
                 live_request_queue.send_realtime(audio_blob)
+                conv_logger.log_user_audio(audio_data)
 
             elif "text" in message:
                 text_data = message["text"]
@@ -184,6 +200,7 @@ async def _handle_websocket(
                         parts=[types.Part(text=json_message["text"])]
                     )
                     live_request_queue.send_content(content)
+                    conv_logger.log_user_text(json_message["text"])
 
                 elif msg_type == "image":
                     image_data = base64.b64decode(json_message["data"])
@@ -228,6 +245,18 @@ async def _handle_websocket(
                         if isinstance(raw_bytes, str):
                             raw_bytes = base64.b64decode(raw_bytes)
                         await websocket.send_bytes(raw_bytes)
+                        conv_logger.log_ai_audio(raw_bytes)
+
+                    elif part.text:
+                        conv_logger.log_ai_text(part.text)
+
+            # Capture transcriptions from server_content
+            if hasattr(event, "server_content") and event.server_content:
+                sc = event.server_content
+                if hasattr(sc, "input_transcription") and sc.input_transcription:
+                    conv_logger.log_user_transcription(sc.input_transcription.text)
+                if hasattr(sc, "output_transcription") and sc.output_transcription:
+                    conv_logger.log_ai_transcription(sc.output_transcription.text)
 
             # Send non-audio events (or events that also have text) as JSON
             if not has_audio:
@@ -270,4 +299,5 @@ async def _handle_websocket(
     finally:
         # --- Phase 4: Session Termination ---
         live_request_queue.close()
+        await conv_logger.flush()
         logger.info("Session closed: user_id=%s, session_id=%s", user_id, session_id)

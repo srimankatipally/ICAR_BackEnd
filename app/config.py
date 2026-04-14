@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     CROP_DIR: str = os.getenv("CROP_DIR", "./crop")
     DISEASE_DIR: str = os.getenv("DISEASE_DIR", "./diseases")
 
+    GCS_CONVERSATION_BUCKET: str = os.getenv("GCS_CONVERSATION_BUCKET", "")
+    RECORD_AUDIO: bool = os.getenv("RECORD_AUDIO", "true").lower() in ("true", "1", "yes")
+
     MAX_SESSIONS: int = 10
     CORS_ORIGINS: list[str] = ["*"]
 

@@ -27,6 +27,7 @@ ENV/
 *.swp
 *.swo
 *~
+.code-review-graph/
 
 # OS
 .DS_Store
