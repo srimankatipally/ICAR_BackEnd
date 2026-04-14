@@ -91,6 +91,28 @@ async def get_conversations(limit: int = 50):
     return {"sessions": sessions, "count": len(sessions)}
 
 
+# Supported languages for deep links
+SUPPORTED_LANGUAGES = [
+    "auto", "hindi", "telugu", "tamil", "kannada", "malayalam",
+    "marathi", "gujarati", "bengali", "odia", "punjabi"
+]
+
+
+@app.get("/{language}")
+async def language_deeplink(language: str):
+    """Language-specific deep link that opens directly into voice mode.
+    
+    Examples:
+        /telugu - Opens voice chat with Telugu greeting
+        /auto - Opens voice chat with auto language detection
+    """
+    if language.lower() in SUPPORTED_LANGUAGES:
+        return FileResponse(static_dir / "index.html")
+    # Return 404 for unknown paths (don't interfere with other routes)
+    from fastapi import HTTPException
+    raise HTTPException(status_code=404, detail="Not found")
+
+
 # --- WebSocket Endpoint ---
 
 

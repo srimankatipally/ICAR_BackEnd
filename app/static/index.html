@@ -643,6 +643,25 @@ body {
 </div>
 
 <script>
+// Language deep link configuration
+const LANGUAGES = {
+  auto: { code: 'auto', native: 'Auto Detect', greeting: null },
+  hindi: { code: 'hi', native: 'हिन्दी', greeting: 'नमस्ते' },
+  telugu: { code: 'te', native: 'తెలుగు', greeting: 'నమస్కారం' },
+  tamil: { code: 'ta', native: 'தமிழ்', greeting: 'வணக்கம்' },
+  kannada: { code: 'kn', native: 'ಕನ್ನಡ', greeting: 'ನಮಸ್ಕಾರ' },
+  malayalam: { code: 'ml', native: 'മലയാളം', greeting: 'നമസ്കാരം' },
+  marathi: { code: 'mr', native: 'मराठी', greeting: 'नमस्कार' },
+  gujarati: { code: 'gu', native: 'ગુજરાતી', greeting: 'નમસ્તે' },
+  bengali: { code: 'bn', native: 'বাংলা', greeting: 'নমস্কার' },
+  odia: { code: 'or', native: 'ଓଡ଼ିଆ', greeting: 'ନମସ୍କାର' },
+  punjabi: { code: 'pa', native: 'ਪੰਜਾਬੀ', greeting: 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ' }
+};
+
+// Detect language from URL path (e.g., /telugu, /auto)
+const pathLang = window.location.pathname.slice(1).toLowerCase();
+const preferredLanguage = LANGUAGES[pathLang] ? pathLang : null;
+
 // State
 const userId = sessionStorage.getItem('kisanUserId') || ('user-' + crypto.randomUUID());
 sessionStorage.setItem('kisanUserId', userId);
@@ -683,8 +702,14 @@ function goBackFromAI() {
   showScreen('ai-options');
 }
 
-// Auto-transition from landing
-setTimeout(() => showScreen('action'), 2000);
+// Auto-transition from landing (or skip to voice for language deep links)
+if (preferredLanguage) {
+  // Language deep link: skip directly to voice mode
+  setTimeout(() => showScreen('voice'), 500);
+} else {
+  // Normal flow: landing -> action
+  setTimeout(() => showScreen('action'), 2000);
+}
 
 // WebSocket
 function connectWS(textOnly = false) {
@@ -701,6 +726,13 @@ function connectWS(textOnly = false) {
   
   ws.onopen = () => {
     updateStatus(true);
+    // If language was set via URL deep link (and not "auto"), send greeting in that language
+    if (preferredLanguage && LANGUAGES[preferredLanguage] && LANGUAGES[preferredLanguage].greeting) {
+      ws.send(JSON.stringify({
+        type: 'text',
+        text: LANGUAGES[preferredLanguage].greeting
+      }));
+    }
   };
   
   ws.onmessage = (evt) => {
