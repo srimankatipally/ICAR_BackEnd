@@ -98,11 +98,26 @@ body {
 }
 
 .org-branding.page-branding {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   margin-top: 0;
-  margin-bottom: 16px;
-  padding-top: 24px;
+  margin-bottom: 0;
+  padding: 16px 24px;
+  background: var(--white);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   opacity: 1;
   animation: none;
+  z-index: 10;
+}
+
+.org-branding.page-branding strong {
+  color: var(--primary);
+}
+
+.org-branding.page-branding span {
+  color: var(--text-secondary);
 }
 
 .beta-tag {
@@ -130,6 +145,7 @@ body {
 #action {
   background: var(--bg);
   padding: 24px;
+  padding-top: 100px;
   justify-content: center;
   align-items: center;
 }
@@ -196,6 +212,7 @@ body {
 #ai-options {
   background: var(--bg);
   padding: 24px;
+  padding-top: 100px;
 }
 
 .options-header {
