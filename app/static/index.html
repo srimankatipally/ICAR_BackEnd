@@ -671,6 +671,7 @@ let currentScreen = 'landing';
 let micStream = null, micContext = null, micProcessor = null;
 let camStream = null, camInterval = null;
 let playbackCtx = null, nextPlayTime = 0;
+let micActive = false, camActive = false;
 
 // Screen Navigation
 function showScreen(id) {
@@ -724,14 +725,31 @@ function connectWS(textOnly = false) {
   ws = new WebSocket(url);
   ws.binaryType = 'arraybuffer';
   
-  ws.onopen = () => {
+  ws.onopen = async () => {
     updateStatus(true);
-    // If language was set via URL deep link (and not "auto"), send greeting in that language
-    if (preferredLanguage && LANGUAGES[preferredLanguage] && LANGUAGES[preferredLanguage].greeting) {
-      ws.send(JSON.stringify({
-        type: 'text',
-        text: LANGUAGES[preferredLanguage].greeting
-      }));
+    
+    // For language deep links in voice mode, auto-start the microphone
+    if (preferredLanguage && currentScreen === 'voice' && !textOnly) {
+      try {
+        await startMic();
+        micActive = true;
+        const btn = document.getElementById('micBtn');
+        const visual = document.getElementById('voiceVisual');
+        const status = document.getElementById('voiceStatusText');
+        if (btn) btn.classList.add('active');
+        if (visual) visual.classList.add('active');
+        if (status) status.textContent = 'Listening... speak now';
+      } catch (e) {
+        console.error('Auto-start mic failed:', e);
+      }
+      
+      // If language was set via URL deep link (and not "auto"), send greeting in that language
+      if (LANGUAGES[preferredLanguage] && LANGUAGES[preferredLanguage].greeting) {
+        ws.send(JSON.stringify({
+          type: 'text',
+          text: LANGUAGES[preferredLanguage].greeting
+        }));
+      }
     }
   };
   
@@ -998,7 +1016,6 @@ function playAudioB64(base64) {
 }
 
 // Button Handlers
-let micActive = false, camActive = false;
 
 document.getElementById('micBtn').addEventListener('click', async () => {
   const btn = document.getElementById('micBtn');
