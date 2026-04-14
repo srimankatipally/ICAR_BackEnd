@@ -646,16 +646,16 @@ body {
 // Language deep link configuration
 const LANGUAGES = {
   auto: { code: 'auto', native: 'Auto Detect', greeting: null },
-  hindi: { code: 'hi', native: 'हिन्दी', greeting: 'नमस्ते' },
-  telugu: { code: 'te', native: 'తెలుగు', greeting: 'నమస్కారం' },
-  tamil: { code: 'ta', native: 'தமிழ்', greeting: 'வணக்கம்' },
-  kannada: { code: 'kn', native: 'ಕನ್ನಡ', greeting: 'ನಮಸ್ಕಾರ' },
-  malayalam: { code: 'ml', native: 'മലയാളം', greeting: 'നമസ്കാരം' },
-  marathi: { code: 'mr', native: 'मराठी', greeting: 'नमस्कार' },
-  gujarati: { code: 'gu', native: 'ગુજરાતી', greeting: 'નમસ્તે' },
-  bengali: { code: 'bn', native: 'বাংলা', greeting: 'নমস্কার' },
-  odia: { code: 'or', native: 'ଓଡ଼ିଆ', greeting: 'ନମସ୍କାର' },
-  punjabi: { code: 'pa', native: 'ਪੰਜਾਬੀ', greeting: 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ' }
+  hindi: { code: 'hi', native: 'हिन्दी', greeting: 'नमस्ते, कृपया हिंदी में बात करें' },
+  telugu: { code: 'te', native: 'తెలుగు', greeting: 'నమస్కారం, దయచేసి తెలుగులో మాట్లాడండి' },
+  tamil: { code: 'ta', native: 'தமிழ்', greeting: 'வணக்கம், தமிழில் பேசுங்கள்' },
+  kannada: { code: 'kn', native: 'ಕನ್ನಡ', greeting: 'ನಮಸ್ಕಾರ, ದಯವಿಟ್ಟು ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡಿ' },
+  malayalam: { code: 'ml', native: 'മലയാളം', greeting: 'നമസ്കാരം, ദയവായി മലയാളത്തിൽ സംസാരിക്കുക' },
+  marathi: { code: 'mr', native: 'मराठी', greeting: 'नमस्कार, कृपया मराठीत बोला' },
+  gujarati: { code: 'gu', native: 'ગુજરાતી', greeting: 'નમસ્તે, કૃપા કરીને ગુજરાતીમાં વાત કરો' },
+  bengali: { code: 'bn', native: 'বাংলা', greeting: 'নমস্কার, অনুগ্রহ করে বাংলায় কথা বলুন' },
+  odia: { code: 'or', native: 'ଓଡ଼ିଆ', greeting: 'ନମସ୍କାର, ଦୟାକରି ଓଡ଼ିଆରେ କଥା ହୁଅନ୍ତୁ' },
+  punjabi: { code: 'pa', native: 'ਪੰਜਾਬੀ', greeting: 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਕਿਰਪਾ ਕਰਕੇ ਪੰਜਾਬੀ ਵਿੱਚ ਗੱਲ ਕਰੋ' }
 };
 
 // Detect language from URL path (e.g., /telugu, /auto)
@@ -739,16 +739,26 @@ function connectWS(textOnly = false) {
         if (btn) btn.classList.add('active');
         if (visual) visual.classList.add('active');
         if (status) status.textContent = 'Listening... speak now';
+        
+        // Wait for audio context to be fully ready before sending greeting
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // If language was set via URL deep link (and not "auto"), send greeting in that language
+        if (LANGUAGES[preferredLanguage] && LANGUAGES[preferredLanguage].greeting) {
+          ws.send(JSON.stringify({
+            type: 'text',
+            text: LANGUAGES[preferredLanguage].greeting
+          }));
+        }
       } catch (e) {
         console.error('Auto-start mic failed:', e);
-      }
-      
-      // If language was set via URL deep link (and not "auto"), send greeting in that language
-      if (LANGUAGES[preferredLanguage] && LANGUAGES[preferredLanguage].greeting) {
-        ws.send(JSON.stringify({
-          type: 'text',
-          text: LANGUAGES[preferredLanguage].greeting
-        }));
+        // If mic permission denied, still send greeting but user will get text response
+        if (LANGUAGES[preferredLanguage] && LANGUAGES[preferredLanguage].greeting) {
+          ws.send(JSON.stringify({
+            type: 'text',
+            text: LANGUAGES[preferredLanguage].greeting
+          }));
+        }
       }
     }
   };
