@@ -12,7 +12,14 @@ A real-time, multimodal AI assistant for Indian oilseed farmers, powered by Goog
 
 ## Demo
 
-**Live Application:** https://icar-vision-backend-ykitwyw32a-uc.a.run.app/
+**Live Applications:**
+
+| Deployment | URL | Region |
+|------------|-----|--------|
+| **Cloud Run** | https://icar-vision-backend-b3oagrv4ea-uc.a.run.app | us-central1 |
+| **GCE (India)** | https://34.14.140.60 | asia-south1 (Mumbai) |
+
+> Note: GCE uses a self-signed SSL certificate. Click "Advanced > Proceed" when prompted.
 
 ## Problem Statement
 
@@ -132,6 +139,7 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 ├── app/
 │   ├── main.py                    # FastAPI app, WebSocket endpoints
 │   ├── config.py                  # Settings and system instructions
+│   ├── conversation_logger.py     # GCS conversation recording
 │   ├── agents/
 │   │   └── root_agent.py          # Root live agent with direct tools
 │   ├── knowledge_agent/
@@ -154,15 +162,17 @@ The agent leverages a curated knowledge base from ICAR-IIOR (Indian Institute of
 │   └── Sunflower/
 │       ├── diseases.txt
 │       └── images/
-├── cloudrun/                     # Cloud Run deployment (us-central1)
-│   ├── deploy.sh                 # One-command Cloud Run deployment
-│   ├── app.json                  # Cloud Run Button configuration
-│   ├── .env.example              # Cloud Run environment variables
-│   └── README.md                 # Cloud Run deployment guide
-├── gce/                          # Compute Engine deployment (asia-south1)
-│   ├── deploy.sh                 # One-command GCE deployment
-│   ├── .env.example              # GCE environment variables
-│   └── README.md                 # GCE deployment guide
+├── cloudrun/                      # Cloud Run deployment (us-central1)
+│   ├── deploy.sh                  # One-command Cloud Run deployment
+│   ├── app.json                   # Cloud Run Button configuration
+│   ├── .env.example               # Cloud Run environment variables
+│   └── README.md                  # Cloud Run deployment guide
+├── gce/                           # Compute Engine deployment (asia-south1)
+│   ├── deploy.sh                  # One-command GCE deployment
+│   ├── .env.example               # GCE environment variables
+│   └── README.md                  # GCE deployment guide
+├── cloudbuild-cloudrun.yaml       # Cloud Build config for Cloud Run auto-deploy
+├── cloudbuild-gce.yaml            # Cloud Build config for GCE auto-deploy
 ├── Dockerfile
 └── requirements.txt
 ```
@@ -238,6 +248,79 @@ export GOOGLE_CLOUD_PROJECT=your-project-id
 
 See [gce/README.md](gce/README.md) for full instructions including Vertex AI permissions, systemd setup, HTTPS with Nginx, and cleanup.
 
+## Auto-Deploy (CI/CD)
+
+This project uses **Cloud Build triggers** for automatic deployment on every push to `main`.
+
+### How It Works
+
+```
+git push origin main
+        │
+        ▼
+┌───────────────────────────────────────────────────────┐
+│              GitHub (srimankatipally/ICAR_BackEnd)    │
+└───────────────────────────────────────────────────────┘
+        │
+        ├──────────────────────┬────────────────────────┐
+        ▼                      ▼                        │
+┌─────────────────┐    ┌─────────────────┐              │
+│ deploy-cloudrun │    │   deploy-gce    │              │
+│    trigger      │    │    trigger      │              │
+└────────┬────────┘    └────────┬────────┘              │
+         │                      │                       │
+         ▼                      ▼                       │
+┌─────────────────┐    ┌─────────────────┐              │
+│ Cloud Run       │    │ Build Image     │              │
+│ --source deploy │    │ Push to         │              │
+│ (~2-3 min)      │    │ Artifact Reg.   │              │
+└─────────────────┘    └────────┬────────┘              │
+                                │                       │
+                                ▼                       │
+                       ┌─────────────────┐              │
+                       │ SSH into GCE VM │              │
+                       │ Pull & Restart  │              │
+                       │ (~4-5 min)      │              │
+                       └─────────────────┘              │
+```
+
+### Build Configuration Files
+
+| File | Target | Description |
+|------|--------|-------------|
+| `cloudbuild-cloudrun.yaml` | Cloud Run | Builds and deploys to Cloud Run (us-central1) |
+| `cloudbuild-gce.yaml` | GCE | Builds image, pushes to Artifact Registry, SSHs into VM to deploy |
+
+### Monitoring Builds
+
+**Console:** https://console.cloud.google.com/cloud-build/builds?project=icarfinal
+
+**CLI:**
+```bash
+# List recent builds
+gcloud builds list --region=us-central1 --project=icarfinal --limit=5
+
+# View build logs
+gcloud builds log BUILD_ID --region=us-central1 --project=icarfinal
+```
+
+### Trigger Details
+
+| Trigger | Branch | Config File | Duration |
+|---------|--------|-------------|----------|
+| `deploy-cloudrun` | `^main$` | `cloudbuild-cloudrun.yaml` | ~2-3 min |
+| `deploy-gce` | `^main$` | `cloudbuild-gce.yaml` | ~4-5 min |
+
+### Manual Trigger (without pushing)
+
+```bash
+# Trigger Cloud Run deploy manually
+gcloud builds triggers run deploy-cloudrun --region=us-central1 --project=icarfinal --branch=main
+
+# Trigger GCE deploy manually
+gcloud builds triggers run deploy-gce --region=us-central1 --project=icarfinal --branch=main
+```
+
 ## API Reference
 
 ### WebSocket Endpoints
@@ -285,6 +368,9 @@ See [gce/README.md](gce/README.md) for full instructions including Vertex AI per
 | `DEMO_AGENT_MODEL` | Live model | `gemini-live-2.5-flash-native-audio` |
 | `CROP_DIR` | Crop knowledge path | `./crop` |
 | `DISEASE_DIR` | Disease knowledge path | `./diseases` |
+| `GCS_CONVERSATION_BUCKET` | GCS bucket for conversation recordings | (optional) |
+| `RECORD_AUDIO` | Enable audio recording | `true` |
+| `DEPLOYMENT_TAG` | Vertex AI tracking label (`cloudrun` or `gce`) | `unknown` |
 
 ## Hackathon Submission Details
 
@@ -333,4 +419,3 @@ The application source code (excluding the knowledge base data) is available und
 
 - **ICAR-IIOR** (Indian Institute of Oilseeds Research) for providing the agricultural knowledge base and granting usage rights
 - Google for the Gemini Live API and ADK
-# Auto-deploy enabled
