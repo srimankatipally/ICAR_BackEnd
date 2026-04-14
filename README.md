@@ -333,3 +333,4 @@ The application source code (excluding the knowledge base data) is available und
 
 - **ICAR-IIOR** (Indian Institute of Oilseeds Research) for providing the agricultural knowledge base and granting usage rights
 - Google for the Gemini Live API and ADK
+# Auto-deploy enabled
